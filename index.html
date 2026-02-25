@@ -389,8 +389,6 @@
           height: 100%;
         }
 
-        /* --- 容器与背景 --- */
-
         /* 外框：统一使用主题色 */
         .gift-book-frame {
           background-color: transparent;
@@ -580,7 +578,7 @@
       <div id="setup-screen" class="bg-white p-8 rounded-lg shadow-xl max-w-2xl mx-auto hidden">
         <h1 class="text-3xl font-bold text-center themed-header mb-6">电子礼簿系统</h1>
         <div id="select-event-section" class="mb-8 hidden">
-          <h2 class="text-xl font-semibold mb-4 border-b pb-2">选择已有事项</h2>
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2">选择已有礼簿</h2>
           <div class="flex items-center space-x-4">
             <select id="event-selector" class="flex-1 p-3 border rounded-lg focus:ring-2 themed-ring">
               <option value="">请选择一个事项</option>
@@ -589,9 +587,9 @@
           </div>
         </div>
         <div>
-          <h2 class="text-xl font-semibold mb-4 border-b pb-2"><span id="or-text"> </span>创建新事项</h2>
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2"><span id="or-text"> </span>创建新礼簿</h2>
           <form id="create-event-form" class="space-y-4">
-            <input type="text" id="event-name" placeholder="事项名称 (例如: 张三李四新婚之喜)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+            <input type="text" id="event-name" placeholder="礼簿名称 (例如: 张三李四新婚之喜)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
  
 
 
@@ -3958,8 +3956,8 @@
           <div class="${containerClass}">
             
             <div class="${cardClass}">
-              <h4 class="font-bold text-lg text-gray-800 mb-1">联系作者</h4>
-              <p class="text-md text-gray-500 mb-4">反馈、功能建议 · 交流</p>
+              <h4 class="font-bold text-lg text-gray-800 mb-1">联系三哥</h4>
+              <p class="text-md text-gray-500 mb-4" · </p>
               <div class="${imgBoxClass} hover:border-blue-400">
                 <img src="${wechatQrSrc}" alt="微信二维码" class="${imgClass}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                 <div class="absolute inset-0 hidden items-center justify-center text-gray-400 bg-gray-50 text-sm">
@@ -3973,7 +3971,7 @@
 
             <div class="${cardClass}">
               <h4 class="font-bold text-lg text-gray-800 mb-1">扫码支持</h4>
-              <p class="text-md text-gray-500 mb-4">开源不易，请作者喝杯奶茶</p>
+              <p class="text-md text-gray-500 mb-4">请三哥喝杯奶茶</p>
 
               <div class="${imgBoxClass} hover:border-red-400">
                 <img src="${payQrSrc}" alt="收款码" class="${imgClass}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
@@ -3981,17 +3979,17 @@
                   此处放收款码<br>(请替换图片路径)
                 </div>
               </div>
-              <p class="text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full mt-1">感谢您的鼓励与支持 ❤️</p>
+              <p class="text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full mt-1">谢谢大家支持 ❤️</p>
             </div>
 
           </div>
           
           <div class="text-center mt-2 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-700 border border-yellow-200">
             <i class="ri-information-line align-middle mr-1"></i>
-            本程序为喻三编辑，如果您觉得这个系统对您有帮助，欢迎联系作。
+            本程序均来自网络，如果遗漏还请指正QQ51620998。
           </div>
         `;
-          this.ui.showModal("联系开发者", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
+          this.ui.showModal("友情提示", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
         }
         /**
          * 绑定页面交互事件，负责表单、快捷键与辅助功能
