@@ -581,13 +581,13 @@
           <h2 class="text-xl font-semibold mb-4 border-b pb-2">选择已有礼簿</h2>
           <div class="flex items-center space-x-4">
             <select id="event-selector" class="flex-1 p-3 border rounded-lg focus:ring-2 themed-ring">
-              <option value="">请选择一个事项</option>
+              <option value="">点击选择</option>
             </select>
             <button id="unlock-event-btn" class="themed-button-primary px-6 py-3 rounded-lg transition duration-300">进入</button>
           </div>
         </div>
         <div>
-          <h2 class="text-xl font-semibold mb-4 border-b pb-2"><span id="or-text"> </span>创建新礼簿</h2>
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2"><span id="or-text"> </span>创建新礼簿：</h2>
           <form id="create-event-form" class="space-y-4">
             <input type="text" id="event-name" placeholder="礼簿名称 (例如: 张三李四新婚之喜)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
  
@@ -620,7 +620,7 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label for="event-theme" class="block text-sm font-medium text-red-500">喜事与白事界面配色风格选择。</label>
+                  <label for="event-theme" class="block text-sm font-medium text-red-500">红白喜事颜色背景选择。</label>
                   <select id="event-theme" class="mt-1 w-full p-3 border rounded-lg focus:ring-2 themed-ring">
                     <option value="theme-festive" selected>喜庆红 (喜事)</option>
                     <option value="theme-solemn">肃穆灰 (白事)</option>
@@ -697,7 +697,7 @@
               <button type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
             </form>
             <div class="mt-6 pt-6 border-t">
-              <h3 class="text-xl font-semibold mb-3">功能区</h3>
+              <h3 class="text-xl font-semibold mb-3">查询区</h3>
               <div class="space-y-3">
                 <div class="relative">
                   <input type="text" id="search-name" placeholder="按姓名查找..." class="w-full p-3 border rounded-lg focus:ring-2 themed-ring pr-10" />
@@ -900,7 +900,7 @@
          * @example
          *   Utils.getCurrentDateTime()
          *   // => { date: "2025-10-12", time: "14:30" }
-         * 用途：为创建事项表单设置默认时间
+         * 用途：为创建礼簿表单设置默认时间
          */
         static getCurrentDateTime() {
           const now = new Date();
@@ -991,8 +991,8 @@
        * 数据库管理器 - IndexedDB 封装
        * 提供对浏览器本地数据库的统一操作接口
        * 存储结构：
-       *   - events: 事项信息（包含名称、时间、密码哈希、主题等）
-       *   - gifts: 礼金记录（包含加密数据和关联的事项ID）
+       *   - events: 礼簿信息（包含名称、时间、密码哈希、主题等）
+       *   - gifts: 礼金记录（包含加密数据和关联的礼簿ID）
        */
       class DBManager {
         /**
@@ -1631,7 +1631,7 @@
         /**
          * 性能优化：重建缓存数据
          * 重新计算总金额、总人数等统计信息
-         * 在加载事项或批量解密后调用
+         * 在加载礼簿或批量解密后调用
          */
         rebuildCache() {
           const app = this.app;
@@ -1696,7 +1696,7 @@
         }
 
         /**
-         * 加载当前事项的所有礼金记录
+         * 加载当前礼簿的所有礼金记录
          * 使用复合索引查询，结果按等级与更新时间排序
          * @returns {Promise<void>}
          */
@@ -2108,7 +2108,7 @@
           const activeGiftsCount = app.gifts.filter((g) => g.data && !g.data.abolished).length;
 
           if (activeGiftsCount === 0) {
-            app.ui.showNotification("当前事项没有有效的礼金记录，无需打印。");
+            app.ui.showNotification("当前礼簿没有有效的礼金记录，无需打印。");
             return;
           }
 
@@ -2456,7 +2456,7 @@
         }
 
         /**
-         * 导出事项数据为 JSON（明文备份）
+         * 导出礼簿数据为 JSON（明文备份）
          */
         async exportEventAsJson() {
           const app = this.app;
@@ -2512,7 +2512,7 @@
         }
 
         /**
-         * 导出事项数据为二进制加密备份
+         * 导出礼簿数据为二进制加密备份
          * 文件格式：[8字节文件头] + [AES 密文字节流]
          * 文件头结构：
          *   - 0-3: Magic Number "EGLB" (0x45 0x47 0x4C 0x42)
@@ -2604,7 +2604,7 @@
         }
 
         /**
-         * 从加密备份文件恢复事项数据
+         * 从加密备份文件恢复礼簿数据
          * @param {File} file - 备份文件（必须是带文件头的二进制格式）
          */
         async importEventFromBinary(file) {
@@ -2623,8 +2623,8 @@
             const FILE_VERSION = 0x01;
             const HEADER_LENGTH = 8;
 
-            // 步骤1：验证当前事项的管理密码
-            const currentEventPassword = await app.requestAdminPassword("导入验证", "请输入当前事项的管理密码以继续。", app.currentEvent.passwordHash, true);
+            // 步骤1：验证当前礼簿的管理密码
+            const currentEventPassword = await app.requestAdminPassword("导入验证", "请输入当前礼簿的管理密码以继续。", app.currentEvent.passwordHash, true);
             if (currentEventPassword === null) return;
 
             // 步骤2：读取并验证文件格式
@@ -2660,7 +2660,7 @@
             }
             const encryptedContent = btoa(binaryString);
 
-            // 尝试用当前事项密码解密
+            // 尝试用当前礼簿密码解密
             let decrypted = CryptoService.decrypt(encryptedContent, currentEventPassword);
             let finalPassword = currentEventPassword;
 
@@ -2669,7 +2669,7 @@
               const backupPassword = await new Promise((resolve) => {
                 const content = `
                         <p class="text-sm text-yellow-700 bg-yellow-50 p-3 rounded-md mb-3">
-                          使用当前事项密码解密失败。备份文件可能使用了不同的密码。
+                          使用当前礼簿密码解密失败。备份文件可能使用了不同的密码。
                         </p>
                         <input type="password" id="backup-pwd-input"
                                class="w-full p-2 border rounded themed-ring"
@@ -2736,7 +2736,7 @@
               });
             }
 
-            // 步骤7：更新事项信息
+            // 步骤7：更新礼簿信息
             const eventSnapshot = payload?.event || {};
             const mergedPrintOptions = {
               ...DEFAULT_PRINT_OPTIONS,
@@ -2774,7 +2774,7 @@
           const modalContent = `
                         <div class="space-y-5 text-left">
                           <div>
-                            <p class="text-sm text-gray-600">可将当前事项数据备份为 JSON 或数据库（BIN）文件，亦可导入 BIN 文件进行恢复。</p>
+                            <p class="text-sm text-gray-600">可将当前礼簿数据备份为 JSON 或数据库（BIN）文件，亦可导入 BIN 文件进行恢复。</p>
                           </div>
                           <div class="grid sm:grid-cols-2 gap-3">
                             <button id="btn-backup-json" class="w-full themed-button-secondary border px-4 py-2 rounded">导出 JSON 数据</button>
@@ -2785,11 +2785,11 @@
                             <input type="file" id="backup-import-file" accept=".bin" class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
                             <div class="flex items-center mt-2">
                               <input type="checkbox" id="clear-old-data-on-import" class="h-4 w-4 themed-ring rounded border-gray-300">
-                              <label for="clear-old-data-on-import" class="ml-2 block text-sm text-gray-800">导入前清空当前事项的所有旧数据</label>
+                              <label for="clear-old-data-on-import" class="ml-2 block text-sm text-gray-800">导入前清空当前礼簿的所有旧数据</label>
                             </div>
                             <p class="text-xs text-gray-500 -mt-1">默认不勾选，即以追加方式导入新数据。</p>
                             <button id="btn-restore-backup" class="w-full themed-button-primary px-4 py-2 rounded">导入并恢复</button>
-                            <p class="text-xs text-gray-500">导入时需输入当前事项的管理密码，请确保备份来源可靠。</p>
+                            <p class="text-xs text-gray-500">导入时需输入当前礼簿的管理密码，请确保备份来源可靠。</p>
                           </div>
                         </div>
                       `;
@@ -2867,7 +2867,7 @@
 
             const modalContent = `
                         <div class="space-y-5 text-left">
-                          <p class="text-sm text-gray-600">首次打印前建议补充关键信息，后续可在“设置事项”中继续修改。</p>
+                          <p class="text-sm text-gray-600">首次打印前建议补充关键信息，后续可在“设置礼簿”中继续修改。</p>
                           <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">记账人 <span class="text-xs text-red-400">(建议填写，非必填)</span></label>
                             <input id="print-first-recorder" type="text" class="w-full p-2 border rounded themed-ring" maxlength="30" value="${currentRecorder}" placeholder="示例：喻三">
@@ -2900,7 +2900,7 @@
                                 </label>
                               </div>
                             </div>
-                            <p class="text-xs text-gray-400 mt-2">可在“设置事项”中再次调整。</p>
+                            <p class="text-xs text-gray-400 mt-2">可在“设置礼簿”中再次调整。</p>
                           </div>
                         </div>
                       `;
@@ -3199,7 +3199,7 @@
                           <td>${Utils.formatCurrency(partTotalAmount)}</td>
                         </tr>
                         <tr class="themed-text">
-                          <td>事项总金额</td>
+                          <td>礼簿总金额</td>
                           <td>${app.totalGiversCache} 人</td>
                           <td>${Utils.formatCurrency(app.totalAmountCache)}</td>
                         </tr>
@@ -3878,11 +3878,11 @@
         }
 
         /**
-         * 加载所有事项到选择列表
+         * 加载所有礼簿到选择列表
          */
         async loadEvents() {
           const events = await this.giftRepository.fetchAllEvents();
-          this.ui.elements.eventSelector.innerHTML = '<option value="">请选择一个事项</option>';
+          this.ui.elements.eventSelector.innerHTML = '<option value="">请选择一个礼簿</option>';
 
           if (events.length > 0) {
             this.ui.elements.selectEventSection.classList.remove("hidden");
@@ -3903,7 +3903,7 @@
         }
 
         /**
-         * 启动事项会话，应用主题、加载礼金数据并展示主界面
+         * 启动礼簿会话，应用主题、加载礼金数据并展示主界面
          */
         async startSession() {
           this.ui.elements.currentEventTitleEl.textContent = this.currentEvent.name;
@@ -3922,13 +3922,13 @@
             console.error("会话存储失败", error);
           }
 
-          // 检查事项是否结束，提醒用户导出数据
+          // 检查礼簿是否结束，提醒用户导出数据
           const endTime = new Date(this.currentEvent.endDateTime);
           const now = new Date();
 
           if (now > endTime && !this.session.hasNotification(this.currentEvent.id)) {
             const title = "请及时导出数据";
-            const message = `当前事项已结束，为确保数据安全，强烈建议您尽快通过【<strong>导出为 Excel</strong>】或【<strong>打印/另存为PDF</strong>】功能，将礼金数据完整备份至您的电脑或者微信。<br>
+            const message = `当前礼簿已结束，为确保数据安全，强烈建议您尽快通过【<strong>导出为 Excel</strong>】或【<strong>打印/另存为PDF</strong>】功能，将礼金数据完整备份至您的电脑或者微信。<br>
                              <span class="text-sm text-gray-600">原因：时间长了，存储空间可能会因浏览器清理、缓存清除等操作被重置，导致数据意外丢失。</span>`;
 
             setTimeout(() => {
@@ -4001,7 +4001,7 @@
           this.ui.elements.unlockEventBtn.addEventListener("click", () => {
             const eventId = parseInt(this.ui.elements.eventSelector.value, 10);
             if (eventId) this.handleUnlockEvent(eventId);
-            else this.ui.showNotification("请先选择一个事项。");
+            else this.ui.showNotification("请先选择一个礼簿。");
           });
 
           // 添加备注预设按钮的事件监听
@@ -4044,18 +4044,18 @@
             }
           });
 
-          // 事项下拉菜单
+          // 礼簿下拉菜单
           this.ui.elements.eventSwitcherTrigger.addEventListener("click", (e) => {
             e.stopPropagation();
             const dropdown = this.ui.elements.eventDropdown;
             const isHidden = dropdown.classList.contains("hidden");
             if (isHidden) {
               dropdown.innerHTML = `
-                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="switch">切换/创建事项</a>
+                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="switch">切换/创建礼簿</a>
                             <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="backup">备份/恢复数据</a>
                             <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="guest-screen">进入副屏</a>
-                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="edit">设置此事项</a>
-                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="delete">删除此事项</a>`;
+                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="edit">设置此礼簿</a>
+                            <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="delete">删除此礼簿</a>`;
             }
             dropdown.classList.toggle("hidden");
           });
@@ -4206,12 +4206,12 @@
         }
 
         /**
-         * 根据事项 ID 校验管理员密码并进入会话
+         * 根据礼簿 ID 校验管理员密码并进入会话
          */
         async handleUnlockEvent(eventId) {
           const event = await this.giftRepository.fetchEvent(eventId);
           if (!event) {
-            this.ui.showNotification("未找到该事项。", "error");
+            this.ui.showNotification("未找到该礼簿。", "error");
             return;
           }
 
@@ -4231,7 +4231,7 @@
         }
 
         /**
-         * 返回创建/选择事项界面并清除当前会话
+         * 返回创建/选择礼簿界面并清除当前会话
          */
         showSetupScreen() {
           const previousEventId = this.currentEvent?.id;
@@ -4249,7 +4249,7 @@
         }
 
         /**
-         * 创建新事项，包含表单校验与封面、打印配置处理
+         * 创建新礼簿，包含表单校验与封面、打印配置处理
          */
         async handleCreateEvent(e) {
           e.preventDefault();
@@ -4276,9 +4276,9 @@
           // 弹窗二次验证刚输入的管理密码，防止记错
           const verifyContent = `
                         <div class="text-left">
-                          <p class="mb-2">为确保管理密码输入无误，请再次输入以确认：</p>
+                          <p class="mb-2">请再次输入刚才的密码确认：</p>
                           <input type="password" id="verify-create-pwd" class="w-full p-2 border rounded themed-ring" placeholder="再次输入管理密码">
-                          <p class="text-xs text-gray-500 mt-2">提示：两次密码需完全一致，才可以创建事项。</p>
+                          <p class="text-xs text-gray-500 mt-2">提示：两次密码需完全一致，才可以创建新礼簿。</p>
                         </div>
                       `;
 
@@ -4321,9 +4321,9 @@
                   this.ui.elements.createEventForm.reset();
                   this.ui.closeModal();
                   await this.startSession();
-                  this.ui.showNotification("事项创建成功。", "success");
+                  this.ui.showNotification("创建成功。", "success");
                 } catch (error) {
-                  this.ui.showNotification("创建事项失败，请重试。", "error");
+                  this.ui.showNotification("创建礼簿失败，请重试。", "error");
                 }
               },
             },
@@ -4435,7 +4435,7 @@
          */
         openGuestScreen() {
           if (!this.currentEvent) {
-            this.ui.showNotification("请先进入一个事项。", "error");
+            this.ui.showNotification("请先进入一个礼簿。", "error");
             return;
           }
 
@@ -5739,7 +5739,7 @@
          * 统一的管理员密码校验方法
          * @param {string} title - 弹窗标题
          * @param {string} message - 提示信息
-         * @param {string} expectedHash - 期望的密码哈希值（可选，默认使用当前事项）
+         * @param {string} expectedHash - 期望的密码哈希值（可选，默认使用当前礼簿）
          * @param {boolean} forceVerify - 是否强制验证（true 时必须输入密码，不使用免密缓存）
          * @returns {Promise<string|null>} 返回原始密码（成功）或 null（取消/错误）
          */
@@ -6135,7 +6135,7 @@
         }
 
         /**
-         * 显示事项设置对话框
+         * 显示礼簿设置对话框
          */
         async showEditEventInfoModal() {
           this.ui.elements.modal.classList.add("modal-large");
@@ -6147,7 +6147,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left">
         <div class="space-y-4">
           <div>
-            <label for="edit-event-name-input" class="block text-sm font-medium text-gray-700">事项名称</label>
+            <label for="edit-event-name-input" class="block text-sm font-medium text-gray-700">礼簿名称</label>
             <input type="text" id="edit-event-name-input" class="w-full mt-1 p-2 border rounded themed-ring" value="${this.currentEvent.name || ""}">
           </div>
 
@@ -6181,7 +6181,7 @@
 
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">事项开始时间</label>
+            <label class="block text-sm font-medium text-gray-700">礼簿开始时间</label>
             <div class="flex gap-2 mt-1">
               <input type="date" id="edit-start-date" required class="w-full p-2 border rounded themed-ring" value="${startDate || ""}">
               <input type="time" id="edit-start-time" required class="w-full p-2 border rounded themed-ring" value="${startTime || ""}">
@@ -6189,7 +6189,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">事项结束时间</label>
+            <label class="block text-sm font-medium text-gray-700">礼簿结束时间</label>
             <div class="flex gap-2 mt-1">
               <input type="date" id="edit-end-date" required class="w-full p-2 border rounded themed-ring" value="${endDate || ""}">
               <input type="time" id="edit-end-time" required class="w-full p-2 border rounded themed-ring" value="${endTime || ""}">
@@ -6214,7 +6214,7 @@
         </div>
       </div>`;
 
-          this.ui.showModal("设置事项", content, [
+          this.ui.showModal("设置礼簿", content, [
             {
               text: "礼簿样式设置",
               class: "border px-4 py-2 rounded themed-button-secondary  mr-auto",
@@ -6238,7 +6238,7 @@
 
                 // 基础验证
                 if (!newName) {
-                  this.ui.showNotification("事项名称不能为空。", "error");
+                  this.ui.showNotification("礼簿名称不能为空。", "error");
                   return;
                 }
                 if (new Date(newStartDateTime) >= new Date(newEndDateTime)) {
@@ -6252,7 +6252,7 @@
                 const datesChanged = newStartDateTime !== originalStartDateTime || newEndDateTime !== originalEndDateTime;
 
                 if (datesChanged) {
-                  const password = await this.requestAdminPassword("密码验证", "修改事项的起止日期，请输入管理密码以确认。", null, true);
+                  const password = await this.requestAdminPassword("密码验证", "修改礼簿的起止日期，请输入管理密码以确认。", null, true);
                   if (!password) {
                     this.ui.showNotification("已取消验证，修改未保存。", "info");
                     return;
@@ -6288,11 +6288,11 @@
                   this.session.save(this.currentEvent, this.currentPassword);
 
                   this.ui.closeModal();
-                  this.ui.showNotification("事项设置更新成功。", "success");
+                  this.ui.showNotification("礼簿设置更新成功。", "success");
                   this.guestScreenService.syncToGuestScreen();
                 } catch (error) {
                   console.error(error);
-                  this.ui.showNotification("事项设置保存失败，请重试。", "error");
+                  this.ui.showNotification("礼簿设置保存失败，请重试。", "error");
                 }
               },
             },
@@ -6315,7 +6315,7 @@
         }
 
         /**
-         * 删除当前事项
+         * 删除当前礼簿
          * 强制要求导出备份并验证管理员密码
          */
         async deleteCurrentEvent() {
@@ -6324,7 +6324,7 @@
           if (this.gifts.length === 0) {
             const password = await this.requestAdminPassword(
               "删除确认",
-              `<p>此操作将永久删除事项 \"<strong>${this.currentEvent.name}</strong>\"，无法恢复。</p>
+              `<p>此操作将永久删除礼簿 \"<strong>${this.currentEvent.name}</strong>\"，无法恢复。</p>
                       <p class=\"mt-4\">请输入管理密码以确认：</p>`,
               null
             );
@@ -6335,7 +6335,7 @@
               await this.giftRepository.deleteEvent(this.currentEvent.id);
               this.session.clear();
               this.passwordCache.clear(this.currentEvent.id);
-              this.ui.showNotification(`事项 "${this.currentEvent.name}" 已被成功删除。`, "success");
+              this.ui.showNotification(`礼簿 "${this.currentEvent.name}" 已被成功删除。`, "success");
 
               setTimeout(() => {
                 this.currentEvent = null;
@@ -6345,7 +6345,7 @@
                 this.loadEvents();
               }, 500);
             } catch (error) {
-              console.error("删除事项时发生错误:", error);
+              console.error("删除礼簿时发生错误:", error);
               this.ui.showNotification("删除失败，请重试。", "error");
             }
             return;
@@ -6353,7 +6353,7 @@
 
           const content = `
                          <div class="text-left space-y-3">
-                           <p class="font-semibold text-gray-800">为了确保您的数据安全，删除事项前必须先导出Excel备份。</p>
+                           <p class="font-semibold text-gray-800">为了确保您的数据安全，删除礼簿前必须先导出Excel备份。</p>
                            <ol class="list-decimal pl-5 text-sm text-gray-700 space-y-1">
                              <li>点击下方“导出Excel备份”按钮，下载并保存到您的电脑。</li>
                              <li>确认已成功导出后，勾选“我已成功导出Excel备份”。</li>
@@ -6382,7 +6382,7 @@
             }
           };
 
-          this.ui.showModal("删除事项", content, [
+          this.ui.showModal("删除礼簿", content, [
             {
               text: "关闭",
               class: "themed-button-secondary border px-4 py-2 rounded",
@@ -6410,7 +6410,7 @@
                   this.ui.showNotification("请先导出 Excel，并勾选确认后再继续。", "error");
                   return;
                 }
-                const password = await this.requestAdminPassword("删除确认", `此操作将永久删除事项 \"<strong>${this.currentEvent.name}</strong>\" 及其所有礼金记录，且无法恢复。请输入管理密码以确认。`, null, true);
+                const password = await this.requestAdminPassword("删除确认", `此操作将永久删除礼簿 \"<strong>${this.currentEvent.name}</strong>\" 及其所有礼金记录，且无法恢复。请输入管理密码以确认。`, null, true);
                 if (password === null) return;
 
                 try {
@@ -6423,7 +6423,7 @@
 
                   this.session.clear();
                   this.passwordCache.clear(eventId);
-                  this.ui.showNotification(`事项 "${this.currentEvent.name}" 已被成功删除。`, "success");
+                  this.ui.showNotification(`礼簿 "${this.currentEvent.name}" 已被成功删除。`, "success");
 
                   setTimeout(() => {
                     this.currentEvent = null;
@@ -6433,7 +6433,7 @@
                     this.loadEvents();
                   }, 500);
                 } catch (error) {
-                  console.error("删除事项时发生错误:", error);
+                  console.error("删除礼簿时发生错误:", error);
                   this.ui.showNotification("删除失败，请重试。", "error");
                 }
               },
@@ -6465,14 +6465,14 @@
         static CACHE_NAME = "giftbook-assets-v1";
 
         /**
-         * 获取事项封面的 Cache Key
+         * 获取礼簿封面的 Cache Key
          */
         static getCoverKey(eventId) {
           return `/event-cover-${eventId}`;
         }
 
         /**
-         * 获取事项背景图的 Cache Key
+         * 获取礼簿背景图的 Cache Key
          */
         static getBackgroundKey(eventId) {
           return `/event-background-${eventId}`;
