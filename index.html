@@ -597,7 +597,7 @@
 
 
 
-<!-- 隐藏元素： style="display: none;"    -->
+<!-- 隐藏元素：代码是： style="display: none;"    -->
            <div class="grid grid-cols-1 md:grid-cols-2 gap-4"style="display: none;">
               <div>
                 <label class="block text-sm font-medium text-gray-700">开始时间</label>
@@ -622,7 +622,7 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label for="event-theme" class="block text-sm font-medium text-gray-700">为不同性质的事项选择合适的界面配色风格。</label>
+                  <label for="event-theme" class="block text-sm font-medium text-red-500">喜事与白事界面配色风格选择。</label>
                   <select id="event-theme" class="mt-1 w-full p-3 border rounded-lg focus:ring-2 themed-ring">
                     <option value="theme-festive" selected>喜庆红 (喜事)</option>
                     <option value="theme-solemn">肃穆灰 (白事)</option>
@@ -631,9 +631,9 @@
                 </div>
 
 
-<!-- 隐藏元素， style="display: none;"    -->
+<!-- 隐藏元素， 代码是：style="display: none;"    -->
 <div class="mt-4" style="display: none;">
-  <label for="event-voice" class="block text-sm font-medium text-gray-700">语音播报音色</label>
+  <label for="event-voice" class="block text-sm font-medium text-gray-500">语音播报音色</label>
   <div class="flex items-center gap-2 mt-1">
     <select id="event-voice" class="text-sm flex-grow w-full p-3 border rounded-lg focus:ring-2 themed-ring">
       <option value="">默认音色</option>
@@ -644,7 +644,7 @@
 
                 </div>
                 <div class="mt-4">
-                  <label class="block text-sm font-medium text-gray-700">记账人</label>
+                  <label class="block text-sm font-medium text-red-500">记账人</label>
                   <input type="text" id="event-recorder" placeholder="记账人 (例如: 喻三，选填)" class="w-full mt-1 p-3 border rounded-lg focus:ring-2 themed-ring" />
                 </div>
               </div>
@@ -2872,7 +2872,7 @@
                           <p class="text-sm text-gray-600">首次打印前建议补充关键信息，后续可在“设置事项”中继续修改。</p>
                           <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">记账人 <span class="text-xs text-red-400">(建议填写，非必填)</span></label>
-                            <input id="print-first-recorder" type="text" class="w-full p-2 border rounded themed-ring" maxlength="30" value="${currentRecorder}" placeholder="示例：王五">
+                            <input id="print-first-recorder" type="text" class="w-full p-2 border rounded themed-ring" maxlength="30" value="${currentRecorder}" placeholder="示例：喻三">
                           </div>
                           <div>
                             <span class="block text-sm font-medium text-gray-700 mb-1">PDF渲染方式</span>
@@ -2963,7 +2963,7 @@
 
         /**
          */
-        createGiftBookRows(gifts, isPrint = false) {
+         createGiftBookRows(gifts, isPrint = false) {
           const app = this.app;
           const fragment = document.createDocumentFragment();
           const nameRow = document.createElement("div");
@@ -3004,11 +3004,6 @@
               if (!isPrint) amountCell.dataset.giftIndex = giftIndex;
             }
             amountRow.appendChild(amountCell);
-
-
-
-
-
           }
 
           fragment.append(nameRow, typeRow, amountRow);
@@ -3977,8 +3972,8 @@
             <div class="w-full h-px md:w-px md:h-64 bg-gray-200"></div>
 
             <div class="${cardClass}">
-              <h4 class="font-bold text-lg text-gray-800 mb-1">打赏支持</h4>
-              <p class="text-md text-gray-500 mb-4">开源不易，请作者喝杯咖啡</p>
+              <h4 class="font-bold text-lg text-gray-800 mb-1">扫码支持</h4>
+              <p class="text-md text-gray-500 mb-4">开源不易，请作者喝杯奶茶</p>
 
               <div class="${imgBoxClass} hover:border-red-400">
                 <img src="${payQrSrc}" alt="收款码" class="${imgClass}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
@@ -3993,7 +3988,7 @@
           
           <div class="text-center mt-2 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-700 border border-yellow-200">
             <i class="ri-information-line align-middle mr-1"></i>
-            本程序为开源免费程序，如果您觉得这个系统对您有帮助，欢迎联系作者提建议。
+            本程序为喻三编辑，如果您觉得这个系统对您有帮助，欢迎联系作。
           </div>
         `;
           this.ui.showModal("联系开发者", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
