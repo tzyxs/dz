@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>电子礼簿系统 - 精修版</title>
+    <title>桐梓人自己的礼上往来 - 记帐本</title>
     <script src="./static/tailwindcss.js"></script>
     <script src="./static/xlsx.full.min.js"></script>
     <script src="./static/crypto-js.min.js"></script>
@@ -576,7 +576,7 @@
     <div id="app-container" class="w-full max-w-7xl mx-auto p-4">
       <!-- 设置界面 -->
       <div id="setup-screen" class="bg-white p-8 rounded-lg shadow-xl max-w-2xl mx-auto hidden">
-        <h1 class="text-3xl font-bold text-center themed-header mb-6">电子礼簿系统</h1>
+        <h1 class="text-3xl font-bold text-center themed-header mb-6">桐梓人自己的礼上往来</h1>
         <div id="select-event-section" class="mb-8 hidden">
           <h2 class="text-xl font-semibold mb-4 border-b pb-2">选择已有礼簿</h2>
           <div class="flex items-center space-x-4">
@@ -3964,7 +3964,7 @@
                   此处放微信二维码<br>(请替换图片路径)
                 </div>
               </div>
-              <p class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full mt-1">微信交流</p>
+              <p class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full mt-1">微信扫码加我</p>
             </div>
 
             <div class="w-full h-px md:w-px md:h-64 bg-gray-200"></div>
@@ -3986,25 +3986,19 @@
           
           <div class="text-center mt-2 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-700 border border-yellow-200">
             <i class="ri-information-line align-middle mr-1"></i>
-            本程序均来自网络，如果遗漏还请指正QQ51620998。
+            本程序来自网络，如果遗漏联系电话18108520999。
           </div>
         `;
           this.ui.showModal("友情提示", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
         }
-        /**
-         * 绑定页面交互事件，负责表单、快捷键与辅助功能
-         */
         bindEvents() {
-          // 表单提交事件
           this.ui.elements.createEventForm.addEventListener("submit", (e) => this.handleCreateEvent(e));
           this.ui.elements.addGiftForm.addEventListener("submit", (e) => this.handleAddGift(e));
           this.ui.elements.unlockEventBtn.addEventListener("click", () => {
             const eventId = parseInt(this.ui.elements.eventSelector.value, 10);
             if (eventId) this.handleUnlockEvent(eventId);
-            else this.ui.showNotification("请先选择一个礼簿。");
+            else this.ui.showNotification("请先选择已有礼簿。");
           });
-
-          // 添加备注预设按钮的事件监听
           const presetButtons = document.querySelectorAll(".remark-preset-btn");
           presetButtons.forEach((btn) => {
             btn.addEventListener("click", (e) => {
