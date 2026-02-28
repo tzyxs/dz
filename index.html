@@ -93,7 +93,7 @@
 
       #gift-book-content {
         display: grid;
-        grid-template-rows: 3fr 1fr 3fr;
+        grid-template-rows: 3fr 1fr 3fr 1fr;
         border-top: 2px solid var(--primary-border-color);
         min-height: 0;
       }
@@ -119,6 +119,9 @@
       .gift-book-row:nth-child(1),
       .gift-book-row:nth-child(3) {
         min-height: 33.3%;
+      }
+      .gift-book-row:nth-child(4) {
+        min-height: 12%;
       }
 
       .gift-book-row > .book-cell {
@@ -195,6 +198,24 @@
         line-height: 3;
         font-size: clamp(10px, 1.3vw, 14px);
       }
+
+      .remark-cell {
+        writing-mode: vertical-lr;
+        text-orientation: mixed;
+        display: grid;
+        place-items: center;
+        align-items: center;
+        justify-items: center;
+        padding: 12px 0;
+        font-size: clamp(20px, 2vw, 26px);
+        letter-spacing: normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: normal;
+      }
+
+      /* remark styles were removed per user request */
 
       .mark {
         font-size: clamp(10px, 1.3vw, 14px);
@@ -672,7 +693,17 @@
             <h2 class="text-2xl font-bold mb-4 text-center border-b pb-2">礼金录入</h2>
             <form id="add-gift-form" class="space-y-4">
               <input type="text" id="guest-name" placeholder="姓名" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
-              <input type="number" id="gift-amount" placeholder="金额 (元)" required min="0" max="999999999999" step="0.01" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+              <input type="number" id="gift-amount" placeholder="金额 (元)" required min="0" max="999999999999" step="0.01" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring mb-2" />
+
+              <div class="flex items-center gap-3 mb-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">选择金额：</label>
+                <div class="flex gap-2">
+                  <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="100">100</button>
+                  <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="200">200</button>
+                  <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="500">500</button>
+                </div>
+              </div>
+
               <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
                 <label class="text-sm font-medium text-gray-700 whitespace-nowrap">收款类型：</label>
                 <div class="flex flex-wrap gap-x-3 gap-y-2">
@@ -1593,11 +1624,13 @@
           const itemIndexOnPage = giftIndex % app.getItemsPerPage();
           const nameCells = app.ui.elements.giftBookContent.querySelectorAll(".name-cell");
           const amountCells = app.ui.elements.giftBookContent.querySelectorAll(".amount-cell");
+          const remarkCells = app.ui.elements.giftBookContent.querySelectorAll(".remark-cell");
 
           const targetNameCell = nameCells[itemIndexOnPage];
           const targetAmountCell = amountCells[itemIndexOnPage];
+          const targetRemarkCell = remarkCells[itemIndexOnPage];
 
-          if (!targetNameCell || !targetAmountCell) {
+          if (!targetNameCell || !targetAmountCell || !targetRemarkCell) {
             app.giftManager.render();
             app.guestScreenService.syncToGuestScreen();
             return;
@@ -1608,6 +1641,15 @@
           targetNameCell.dataset.giftIndex = giftIndex;
           targetAmountCell.innerHTML = amountHTML;
           targetAmountCell.dataset.giftIndex = giftIndex;
+          // 更新备注单元格
+          targetRemarkCell.innerHTML = app.formatRemarkDisplay(gift.data.remarkData) || "";
+          targetRemarkCell.dataset.giftIndex = giftIndex;
+          // 调整当前备注单元格字号以适配，避免拉伸
+          try {
+            this.adjustRemarkFontForCell(targetRemarkCell);
+          } catch (e) {
+            console.warn('调整单条备注字体失败', e);
+          }
         }
 
         /**
@@ -1620,12 +1662,68 @@
           const app = this.app;
           const targetNameCell = app.ui.elements.giftBookContent.querySelector(`.name-cell[data-gift-index="${giftIndex}"]`);
           const targetAmountCell = app.ui.elements.giftBookContent.querySelector(`.amount-cell[data-gift-index="${giftIndex}"]`);
+          const targetRemarkCell = app.ui.elements.giftBookContent.querySelector(`.remark-cell[data-gift-index="${giftIndex}"]`);
 
-          if (!targetNameCell || !targetAmountCell) return;
+          if (!targetNameCell || !targetAmountCell || !targetRemarkCell) return;
 
           const { nameHTML, amountHTML } = app.giftManager.generateGiftCellHTML({ data: updatedData }, giftIndex);
           targetNameCell.innerHTML = nameHTML;
           targetAmountCell.innerHTML = amountHTML;
+          targetRemarkCell.innerHTML = app.formatRemarkDisplay(updatedData.remarkData) || "";
+          try {
+            this.adjustRemarkFontForCell(targetRemarkCell);
+          } catch (e) {
+            console.warn('调整更新后备注字体失败', e);
+          }
+        }
+
+        /**
+         * 将备注文字缩放到适合单元格的大小，防止内容撑开表格
+         * @param {HTMLElement} cell
+         */
+        adjustRemarkFontForCell(cell) {
+          if (!cell) return;
+          const innerText = (cell.textContent || '').trim();
+          if (!innerText) return;
+
+          const style = window.getComputedStyle(cell);
+          let fontSize = parseFloat(style.fontSize) || 16;
+          const minFont = 8; // px
+          const maxIterations = 20;
+
+          // Reset to computed font-size so adjustments start from default
+          cell.style.fontSize = `${fontSize}px`;
+          cell.style.lineHeight = '1';
+
+          let i = 0;
+          // Reduce font-size until content fits within cell or reach minimum
+          while ((cell.scrollHeight > cell.clientHeight || cell.scrollWidth > cell.clientWidth) && i < maxIterations && fontSize > minFont) {
+            fontSize = Math.max(minFont, Math.floor(fontSize * 0.9));
+            cell.style.fontSize = `${fontSize}px`;
+            i++;
+          }
+        }
+
+        /**
+         * 批量调整当前页所有备注单元格字体
+         */
+        adjustAllRemarkFonts() {
+          const app = this.app;
+          const container = app.ui?.elements?.giftBookContent;
+          if (!container) return;
+          const cells = container.querySelectorAll('.remark-cell');
+          cells.forEach((c) => {
+            try {
+              // 强制将备注字体设置为初始的一半以避免默认撑大表格
+              const style = window.getComputedStyle(c);
+              const current = parseFloat(style.fontSize) || 16;
+              c.style.fontSize = `${Math.max(8, Math.floor(current / 2))}px`;
+              // 如果仍然溢出，继续微调
+              this.adjustRemarkFontForCell(c);
+            } catch (e) {
+              /* ignore */
+            }
+          });
         }
 
         /**
@@ -1798,6 +1896,12 @@
           const items = app.gifts.slice((app.currentPage - 1) * pageSize, app.currentPage * pageSize);
           app.ui.elements.giftBookContent.innerHTML = "";
           app.ui.elements.giftBookContent.appendChild(app.exportService.createGiftBookRows(items, false, pageSize));
+          // 调整备注文字以适配单元格，避免拉伸表格
+          try {
+            this.adjustAllRemarkFonts();
+          } catch (e) {
+            console.warn('调整备注字体失败', e);
+          }
         }
 
         /**
@@ -2427,8 +2531,7 @@
               printView.appendChild(pageContainer);
             }
 
-            // 附录与统计
-            printOptions.printAppendix && this.appendAppendixPages(printView, giftsSubset, partIndex, totalParts);
+            // 附录与统计（已禁用：不再在打印/另存时生成宾客备注附录）
             printOptions.printSummary && this.appendSummaryPage(printView, giftsSubset, partIndex);
 
             // 封底页
@@ -2765,6 +2868,77 @@
           }
         }
         /**
+         * 从明文 JSON 文件导入礼簿数据（JSON 格式由 exportEventAsJson 导出）
+         * @param {File} file
+         */
+        async importEventFromJson(file) {
+          const app = this.app;
+          if (!app.currentEvent || !file) {
+            app.ui.showNotification("请先选择要导入的 JSON 文件。", "error");
+            return;
+          }
+
+          // 在弹窗中读取是否清空旧数据
+          const shouldClearOldData = !!document.getElementById("clear-old-data-on-import")?.checked;
+
+          try {
+            // 验证管理密码（为了能将数据重新加密写入当前礼簿）
+            const currentEventPassword = await app.requestAdminPassword("导入验证", "请输入当前礼簿的管理密码以继续。", app.currentEvent.passwordHash, true);
+            if (currentEventPassword === null) return;
+
+            const text = await file.text();
+            const payload = JSON.parse(text);
+            const giftRecords = Array.isArray(payload?.gifts) ? payload.gifts : [];
+
+            if (shouldClearOldData) {
+              const existingGifts = await app.giftRepository.fetchGiftsByEvent(app.currentEvent.id);
+              for (const g of existingGifts) {
+                await app.giftRepository.deleteGift(g.id);
+              }
+              app.ui.showNotification("旧数据已清空。", "info");
+            }
+
+            // 将明文记录用当前礼簿密码重新加密后写入数据库
+            for (const record of giftRecords) {
+              const data = record.data || record; // 兼容直接导出结构或嵌套 data
+              const encryptedData = CryptoService.encrypt(data, currentEventPassword);
+              await app.giftRepository.createGift({
+                eventId: app.currentEvent.id,
+                encryptedData,
+                guestLevelWeight: record.guestLevelWeight ?? 0,
+                levelUpdateTime: record.levelUpdateTime ?? 0,
+              });
+            }
+
+            // 合并并更新事件元数据（保留当前 id 与密码哈希）
+            const eventSnapshot = payload?.event || {};
+            const mergedPrintOptions = {
+              ...DEFAULT_PRINT_OPTIONS,
+              ...(app.currentEvent.printOptions || {}),
+              ...(eventSnapshot.printOptions || {}),
+            };
+            const updatedEvent = {
+              ...app.currentEvent,
+              ...eventSnapshot,
+              id: app.currentEvent.id,
+              passwordHash: app.currentEvent.passwordHash,
+              printOptions: mergedPrintOptions,
+            };
+            await app.giftRepository.updateEvent(updatedEvent);
+            app.currentEvent = updatedEvent;
+
+            // 刷新界面
+            await app.giftManager.loadGiftsForCurrentEvent();
+            app.session.save(app.currentEvent, currentEventPassword);
+
+            app.ui.closeModal();
+            app.ui.showNotification(`JSON 导入成功，${shouldClearOldData ? '替换' : '追加'}了 ${giftRecords.length} 条记录。`, 'success');
+          } catch (error) {
+            console.error('导入 JSON 失败:', error);
+            app.ui.showNotification('导入 JSON 文件失败，文件可能格式不对或已损坏。', 'error');
+          }
+        }
+        /**
          * 显示备份/恢复弹窗，提供 JSON 与 BIN 导出或导入
          */
         showBackupRestoreModal() {
@@ -2782,7 +2956,7 @@
                           </div>
                           <div class="border-t pt-4 space-y-3">
                             <label class="block text-sm font-medium text-gray-700">导入备份文件</label>
-                            <input type="file" id="backup-import-file" accept=".bin" class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
+                            <input type="file" id="backup-import-file" accept=".bin,.json" class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300" />
                             <div class="flex items-center mt-2">
                               <input type="checkbox" id="clear-old-data-on-import" class="h-4 w-4 themed-ring rounded border-gray-300">
                               <label for="clear-old-data-on-import" class="ml-2 block text-sm text-gray-800">导入前清空当前礼簿的所有旧数据</label>
@@ -2825,8 +2999,17 @@
                   return;
                 }
                 restoreBtn.disabled = true;
-                await app.exportService.importEventFromBinary(fileInput.files[0]);
-                restoreBtn.disabled = false;
+                const f = fileInput.files[0];
+                const name = (f.name || "").toLowerCase();
+                try {
+                  if (name.endsWith('.json')) {
+                    await app.exportService.importEventFromJson(f);
+                  } else {
+                    await app.exportService.importEventFromBinary(f);
+                  }
+                } finally {
+                  restoreBtn.disabled = false;
+                }
               });
             }
           }, 50);
@@ -2970,6 +3153,8 @@
           typeRow.className = "gift-book-row";
           const amountRow = document.createElement("div");
           amountRow.className = "gift-book-row";
+          const remarkRow = document.createElement("div");
+          remarkRow.className = "gift-book-row";
 
           const typeText = app.currentEvent.theme === "theme-solemn" ? "礼金" : "贺礼";
 
@@ -3002,9 +3187,18 @@
               if (!isPrint) amountCell.dataset.giftIndex = giftIndex;
             }
             amountRow.appendChild(amountCell);
+            // 备注单元格（新行）
+            const remarkCell = document.createElement("div");
+            remarkCell.className = "book-cell remark-cell";
+            if (gift?.data) {
+              remarkCell.innerHTML = app.formatRemarkDisplay(gift.data.remarkData) || "";
+              if (!isPrint) remarkCell.dataset.giftIndex = giftIndex;
+            }
+            // 暂时允许备注换行显示
+            remarkRow.appendChild(remarkCell);
           }
-
-          fragment.append(nameRow, typeRow, amountRow);
+ 
+          fragment.append(nameRow, typeRow, amountRow, remarkRow);
           return fragment;
         }
 
@@ -3015,8 +3209,37 @@
          */
         renderGiftBookForPrint(container, gifts) {
           const app = this.app;
-          container.innerHTML = "";
-          container.appendChild(this.createGiftBookRows(gifts, true));
+          // 使用字符串构建（一次性 innerHTML），减少大量 createElement 导致的 DOM 性能开销
+          const typeText = app.currentEvent.theme === "theme-solemn" ? "礼金" : "贺礼";
+          const itemsPerPage = app.getItemsPerPage();
+          let nameRow = '<div class="gift-book-row">';
+          let typeRow = '<div class="gift-book-row">';
+          let amountRow = '<div class="gift-book-row">';
+          let remarkRow = '<div class="gift-book-row">';
+
+          for (let i = 0; i < itemsPerPage; i++) {
+            const gift = gifts[i];
+            if (gift && gift.data) {
+              const giftIndex = null; // print mode doesn't use data-gift-index
+              const { nameHTML, amountHTML } = app.giftManager.generateGiftCellHTML(gift, giftIndex);
+              nameRow += `<div class="book-cell name-cell">${nameHTML}</div>`;
+              typeRow += `<div class="book-cell type-cell">${typeText}</div>`;
+              amountRow += `<div class="book-cell amount-cell">${amountHTML}</div>`;
+              remarkRow += `<div class="book-cell remark-cell">${app.formatRemarkDisplay(gift.data.remarkData) || ""}</div>`;
+            } else {
+              nameRow += `<div class="book-cell name-cell"></div>`;
+              typeRow += `<div class="book-cell type-cell">${typeText}</div>`;
+              amountRow += `<div class="book-cell amount-cell"></div>`;
+              remarkRow += `<div class="book-cell remark-cell"></div>`;
+            }
+          }
+
+          nameRow += '</div>';
+          typeRow += '</div>';
+          amountRow += '</div>';
+          remarkRow += '</div>';
+
+          container.innerHTML = nameRow + typeRow + amountRow + remarkRow;
         }
 
         /**
@@ -4005,6 +4228,19 @@
               e.preventDefault();
               const preset = btn.dataset.preset;
               this.toggleRemarkPreset(preset, btn);
+            });
+          });
+          const quickAmountButtons = document.querySelectorAll('.amount-quick-btn');
+          quickAmountButtons.forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              const amt = btn.dataset.amount;
+              const input = document.getElementById('gift-amount');
+              if (input) {
+                input.value = amt;
+                input.focus();
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              }
             });
           });
           // 分页按钮
