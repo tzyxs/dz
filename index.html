@@ -641,12 +641,18 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label for="event-theme" class="block text-sm font-medium text-red-500">红白喜事颜色背景选择。</label>
-                  <select id="event-theme" class="mt-1 w-full p-3 border rounded-lg focus:ring-2 themed-ring">
-                    <option value="theme-festive" selected>喜庆红 (喜事)</option>
-                    <option value="theme-solemn">肃穆灰 (白事)</option>
-                  </select>
-                
+                  <label class="block text-sm font-medium text-red-500">红白喜事颜色背景选择。</label>
+                  <!-- 使用两个单选按钮并排显示，便于直接选择喜庆或肃穆主题 -->
+                  <div class="flex gap-4 mt-1">
+                    <label class="flex items-center space-x-2">
+                      <input type="radio" name="event-theme" value="theme-festive" checked class="themed-text-radio themed-ring" />
+                      <span>喜庆红 (喜事)</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                      <input type="radio" name="event-theme" value="theme-solemn" class="themed-text-radio themed-ring" />
+                      <span>肃穆灰 (白事)</span>
+                    </label>
+                  </div>
                 </div>
 
 
@@ -710,7 +716,7 @@
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="现金" class="themed-text-radio themed-ring" checked /><span>现金</span></label>
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="微信" class="themed-text-radio themed-ring" /><span>微信</span></label>
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="支付宝" class="themed-text-radio themed-ring" /><span>支付宝</span></label>
-
+                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="其他" class="themed-text-radio themed-ring" /><span>其他</span></label>
                 </div>
               </div>
               <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（选填）" data-remark-type="custom"></textarea>
@@ -1245,7 +1251,9 @@
             endDateInput: $("end-date"),
             endTimeInput: $("end-time"),
             adminPasswordInput: $("admin-password"),
-            eventThemeSelect: $("event-theme"),
+            // eventThemeSelect 已改为一组单选按钮，通过 name 查询选中的值
+            // 保留属性名以免后续代码查找失败，但值为 null
+            eventThemeSelect: null,
             eventVoiceSelect: $("event-voice"),
             previewCreateVoiceBtn: $("preview-create-voice-btn"),
             fullscreenBtn: $("fullscreen-btn"),
@@ -4487,7 +4495,9 @@
           const startDateTime = `${this.ui.elements.startDateInput.value}T${this.ui.elements.startTimeInput.value}`;
           const endDateTime = `${this.ui.elements.endDateInput.value}T${this.ui.elements.endTimeInput.value}`;
           const password = this.ui.elements.adminPasswordInput.value;
-          const theme = this.ui.elements.eventThemeSelect.value;
+          // 获取单选按钮选中的主题值，如果没有则默认为喜庆红
+          const themeInput = document.querySelector('input[name="event-theme"]:checked');
+          const theme = themeInput ? themeInput.value : "theme-festive";
           const voiceName = this.ui.elements.eventVoiceSelect.value;
           const recorder = document.getElementById("event-recorder").value.trim();
           const pdfEngine = "browser";
