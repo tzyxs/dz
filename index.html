@@ -72,6 +72,31 @@
         --type-color: var(--custom-type-color, #374151);
       }
 
+      /* 主题选择按钮样式 */
+      .theme-option-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        color: #000;
+        background-color: #fff; /* 默认白色 */
+        font-weight: bold;
+        text-align: center;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+      }
+      .theme-option-btn.active[data-value="theme-festive"] {
+        background-color: #dc2626;
+        color: #fff;
+      }
+      .theme-option-btn.active[data-value="theme-solemn"] {
+        background-color: #374151;
+        color: #fff;
+      }
+      .theme-option-btn.active {
+        border-color: #000;
+      }
+
       /* ==================== 基础样式 ==================== */
       body {
         font-family: "Inter", "Microsoft YaHei", sans-serif;
@@ -642,17 +667,12 @@
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
                   <label class="block text-sm font-medium text-red-500">红白喜事颜色背景选择。</label>
-                  <!-- 使用两个单选按钮并排显示，便于直接选择喜庆或肃穆主题 -->
+                  <!-- 两个彩色按钮并排；点击时设置隐藏输入的值 -->
                   <div class="flex gap-4 mt-1">
-                    <label class="flex items-center space-x-2">
-                      <input type="radio" name="event-theme" value="theme-festive" checked class="themed-text-radio themed-ring" />
-                      <span>喜庆红 (喜事)</span>
-                    </label>
-                    <label class="flex items-center space-x-2">
-                      <input type="radio" name="event-theme" value="theme-solemn" class="themed-text-radio themed-ring" />
-                      <span>肃穆灰 (白事)</span>
-                    </label>
+                    <button type="button" id="theme-btn-festive" data-value="theme-festive" class="theme-option-btn">喜庆红 (喜事)</button>
+                    <button type="button" id="theme-btn-solemn" data-value="theme-solemn" class="theme-option-btn">肃穆灰 (白事)</button>
                   </div>
+                  <input type="hidden" id="event-theme" value="" />
                 </div>
 
 
@@ -1251,9 +1271,8 @@
             endDateInput: $("end-date"),
             endTimeInput: $("end-time"),
             adminPasswordInput: $("admin-password"),
-            // eventThemeSelect 已改为一组单选按钮，通过 name 查询选中的值
-            // 保留属性名以免后续代码查找失败，但值为 null
-            eventThemeSelect: null,
+            // 主题选择现在使用隐藏输入配合两个按钮
+            eventThemeSelect: $("event-theme"),
             eventVoiceSelect: $("event-voice"),
             previewCreateVoiceBtn: $("preview-create-voice-btn"),
             fullscreenBtn: $("fullscreen-btn"),
@@ -4077,6 +4096,22 @@
           this.ui.elements.endDateInput.value = date;
           this.ui.elements.endTimeInput.value = "23:59";
           this.populateVoiceList();
+          this.bindThemeButtons();
+        }
+
+        bindThemeButtons() {
+          const festBtn = document.getElementById("theme-btn-festive");
+          const solemnBtn = document.getElementById("theme-btn-solemn");
+          const hidden = document.getElementById("event-theme");
+          if (!festBtn || !solemnBtn || !hidden) return;
+          const update = (btn) => {
+            hidden.value = btn.dataset.value;
+            festBtn.classList.toggle("active", btn === festBtn);
+            solemnBtn.classList.toggle("active", btn === solemnBtn);
+          };
+          festBtn.addEventListener("click", () => update(festBtn));
+          solemnBtn.addEventListener("click", () => update(solemnBtn));
+          // 初始不高亮，保持灰色
         }
 
         /**
@@ -4495,9 +4530,8 @@
           const startDateTime = `${this.ui.elements.startDateInput.value}T${this.ui.elements.startTimeInput.value}`;
           const endDateTime = `${this.ui.elements.endDateInput.value}T${this.ui.elements.endTimeInput.value}`;
           const password = this.ui.elements.adminPasswordInput.value;
-          // 获取单选按钮选中的主题值，如果没有则默认为喜庆红
-          const themeInput = document.querySelector('input[name="event-theme"]:checked');
-          const theme = themeInput ? themeInput.value : "theme-festive";
+          // 从隐藏输入中获取所选主题
+          const theme = this.ui.elements.eventThemeSelect.value || "theme-festive";
           const voiceName = this.ui.elements.eventVoiceSelect.value;
           const recorder = document.getElementById("event-recorder").value.trim();
           const pdfEngine = "browser";
