@@ -72,32 +72,6 @@
         --type-color: var(--custom-type-color, #374151);
       }
 
-      /* 主题选择按钮样式 */
-      .theme-option-btn {
-        flex: 1;
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        color: #000;
-        background-color: #fff; /* 默认白色 */
-        font-weight: bold;
-        font-size: 0.875rem; /* 字体小一点 */
-        text-align: center;
-        cursor: pointer;
-        border: 2px solid #d1d5db; /* 灰色边框 */
-        transition: border-color 0.2s, background-color 0.2s, color 0.2s;
-      }
-      .theme-option-btn.active[data-value="theme-festive"] {
-        background-color: #dc2626;
-        color: #fff;
-      }
-      .theme-option-btn.active[data-value="theme-solemn"] {
-        background-color: #000000;
-        color: #fff;
-      }
-      .theme-option-btn.active {
-        border-color: #000;
-      }
-
       /* ==================== 基础样式 ==================== */
       body {
         font-family: "Inter", "Microsoft YaHei", sans-serif;
@@ -293,6 +267,23 @@
       .themed-button-secondary {
         border-color: var(--button-border-color);
         color: var(--button-text-color);
+      }
+
+      /* 主题颜色选择按钮样式 */
+      .theme-selection-btn {
+        background-color: #e5e7eb; /* gray-200 */
+        color: #374151; /* gray-700 */
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .theme-selection-btn.selected {
+        color: #fff;
+      }
+      #theme-festive-btn.selected {
+        background-color: rgba(187, 7, 7, 0.842); /* 与主题颜色一致 */
+      }
+      #theme-solemn-btn.selected {
+        background-color: #000;
       }
       .themed-button-secondary:hover {
         background-color: var(--link-hover-bg);
@@ -636,7 +627,7 @@
         <div>
           <h2 class="text-xl font-semibold mb-4 border-b pb-2"><span id="or-text"> </span>创建新礼簿：</h2>
           <form id="create-event-form" class="space-y-4">
-            <input type="text" id="event-name" placeholder="礼簿名称 (例如: 婚嫁喜宴寿诞白事)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+            <input type="text" id="event-name" placeholder="礼簿名称 (例如: 张三李四新婚之喜)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
  
 
 
@@ -667,13 +658,12 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label class="block text-sm font-medium text-red-500">红白喜事背景选择。</label>
-                  <!-- 两个彩色按钮并排；点击时设置隐藏输入的值 -->
-                  <div class="flex gap-4 mt-1">
-                    <button type="button" id="theme-btn-festive" data-value="theme-festive" class="theme-option-btn">喜庆红 (喜事)</button>
-                    <button type="button" id="theme-btn-solemn" data-value="theme-solemn" class="theme-option-btn">肃穆灰 (白事)</button>
+                  <label class="block text-sm font-medium text-red-500">红白喜事颜色背景选择。</label>
+                  <div class="flex mt-1">
+                    <button type="button" id="theme-festive-btn" class="flex-1 p-3 border rounded-l-lg bg-gray-200 text-gray-700 transition theme-selection-btn">喜庆红 (喜事)</button>
+                    <button type="button" id="theme-solemn-btn" class="flex-1 p-3 border rounded-r-lg bg-gray-200 text-gray-700 transition theme-selection-btn">肃穆灰 (白事)</button>
                   </div>
-                  <input type="hidden" id="event-theme" value="" />
+                  <input type="hidden" id="event-theme" value="">
                 </div>
 
 
@@ -727,7 +717,6 @@
                 <div class="flex gap-2">
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="100">100</button>
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="200">200</button>
-                  <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="200">300</button>
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="500">500</button>
                 </div>
               </div>
@@ -738,10 +727,21 @@
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="现金" class="themed-text-radio themed-ring" checked /><span>现金</span></label>
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="微信" class="themed-text-radio themed-ring" /><span>微信</span></label>
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="支付宝" class="themed-text-radio themed-ring" /><span>支付宝</span></label>
-                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="其他" class="themed-text-radio themed-ring" /><span>其他</span></label>
+
                 </div>
               </div>
-              <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（例如小名住址）" data-remark-type="custom"></textarea>
+              <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（选填）" data-remark-type="custom"></textarea>
+              <div class="flex flex-wrap items-center gap-x-1 gap-y-2">
+                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">更多备注：</label>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="gift">礼品</button>
+                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="relation">关系</button>
+                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="phone">电话</button>
+                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="address">住址</button>
+                </div>
+              </div>
+              <!-- 用于动态添加“礼品”、“关系”等输入框的容器 -->
+              <div id="remark-inputs-container" class="space-y-2"></div>
               <button type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
             </form>
             <div class="mt-6 pt-6 border-t">
@@ -1262,10 +1262,11 @@
             endDateInput: $("end-date"),
             endTimeInput: $("end-time"),
             adminPasswordInput: $("admin-password"),
-            // 主题选择现在使用隐藏输入配合两个按钮
             eventThemeSelect: $("event-theme"),
             eventVoiceSelect: $("event-voice"),
             previewCreateVoiceBtn: $("preview-create-voice-btn"),
+            themeFestiveBtn: $("theme-festive-btn"),
+            themeSolemnBtn: $("theme-solemn-btn"),
             fullscreenBtn: $("fullscreen-btn"),
             fullscreenIcon: $("fullscreen-icon"),
             supportBtn: $("support-btn"),
@@ -4054,6 +4055,10 @@
           this.allGiftsDecrypted = false;
           this.REMARK_LABELS = [
             { key: "custom", label: "备注" },
+            { key: "gift", label: "礼品" },
+            { key: "relation", label: "关系" },
+            { key: "phone", label: "电话" },
+            { key: "address", label: "住址" },
           ];
         }
 
@@ -4083,22 +4088,47 @@
           this.ui.elements.endDateInput.value = date;
           this.ui.elements.endTimeInput.value = "23:59";
           this.populateVoiceList();
-          this.bindThemeButtons();
+          // 重置主题选择按钮状态
+          this.resetThemeSelection();
         }
 
-        bindThemeButtons() {
-          const festBtn = document.getElementById("theme-btn-festive");
-          const solemnBtn = document.getElementById("theme-btn-solemn");
-          const hidden = document.getElementById("event-theme");
-          if (!festBtn || !solemnBtn || !hidden) return;
-          const update = (btn) => {
-            hidden.value = btn.dataset.value;
-            festBtn.classList.toggle("active", btn === festBtn);
-            solemnBtn.classList.toggle("active", btn === solemnBtn);
-          };
-          festBtn.addEventListener("click", () => update(festBtn));
-          solemnBtn.addEventListener("click", () => update(solemnBtn));
-          // 初始不高亮，保持灰色
+        /**
+         * 设置和保存主题选择
+         * @param {string} theme - "theme-festive" 或 "theme-solemn"
+         */
+        selectTheme(theme) {
+          // 更新隐藏字段
+          if (this.ui.elements.eventThemeSelect) this.ui.elements.eventThemeSelect.value = theme;
+          const festBtn = this.ui.elements.themeFestiveBtn;
+          const solBtn = this.ui.elements.themeSolemnBtn;
+          // 先移除所有选中状态
+          [festBtn, solBtn].forEach((btn) => {
+            if (!btn) return;
+            btn.classList.remove("selected", "bg-red-500", "bg-black", "text-white");
+            btn.classList.add("bg-gray-200", "text-gray-700");
+          });
+          // 应用对应主题的高亮样式
+          if (theme === "theme-festive" && festBtn) {
+            festBtn.classList.remove("bg-gray-200", "text-gray-700");
+            festBtn.classList.add("selected", "bg-red-500", "text-white");
+          } else if (theme === "theme-solemn" && solBtn) {
+            solBtn.classList.remove("bg-gray-200", "text-gray-700");
+            solBtn.classList.add("selected", "bg-black", "text-white");
+          }
+        }
+
+        /**
+         * 将主题按钮恢复到未选择状态
+         */
+        resetThemeSelection() {
+          if (this.ui.elements.eventThemeSelect) this.ui.elements.eventThemeSelect.value = "";
+          const festBtn = this.ui.elements.themeFestiveBtn;
+          const solBtn = this.ui.elements.themeSolemnBtn;
+          [festBtn, solBtn].forEach((btn) => {
+            if (!btn) return;
+            btn.classList.remove("selected", "bg-red-500", "bg-black", "text-white");
+            btn.classList.add("bg-gray-200", "text-gray-700");
+          });
         }
 
         /**
@@ -4245,6 +4275,10 @@
           this.ui.showModal("友情提示", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
         }
         bindEvents() {
+          // 主题选择按钮
+          this.ui.elements.themeFestiveBtn.addEventListener("click", () => this.selectTheme("theme-festive"));
+          this.ui.elements.themeSolemnBtn.addEventListener("click", () => this.selectTheme("theme-solemn"));
+
           this.ui.elements.createEventForm.addEventListener("submit", (e) => this.handleCreateEvent(e));
           this.ui.elements.addGiftForm.addEventListener("submit", (e) => this.handleAddGift(e));
           this.ui.elements.unlockEventBtn.addEventListener("click", () => {
@@ -4517,14 +4551,18 @@
           const startDateTime = `${this.ui.elements.startDateInput.value}T${this.ui.elements.startTimeInput.value}`;
           const endDateTime = `${this.ui.elements.endDateInput.value}T${this.ui.elements.endTimeInput.value}`;
           const password = this.ui.elements.adminPasswordInput.value;
-          // 从隐藏输入中获取所选主题
-          const theme = this.ui.elements.eventThemeSelect.value || "theme-festive";
+          const theme = this.ui.elements.eventThemeSelect.value;
           const voiceName = this.ui.elements.eventVoiceSelect.value;
           const recorder = document.getElementById("event-recorder").value.trim();
           const pdfEngine = "browser";
 
           if (!name || !password || !startDateTime || !endDateTime) {
             this.ui.showNotification("请填写所有必填项。", "error");
+            return;
+          }
+
+          if (!theme) {
+            this.ui.showNotification("请选择礼簿主题颜色（喜庆红或肃穆灰）。", "error");
             return;
           }
 
@@ -6422,6 +6460,16 @@
             </div>
           </div>
 
+          <!-- 主题颜色选择 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700">礼簿主题颜色</label>
+            <div class="flex mt-1">
+              <button type="button" id="edit-theme-festive-btn" class="flex-1 p-3 border rounded-l-lg bg-gray-200 text-gray-700 transition theme-selection-btn">喜庆红 (喜事)</button>
+              <button type="button" id="edit-theme-solemn-btn" class="flex-1 p-3 border rounded-r-lg bg-gray-200 text-gray-700 transition theme-selection-btn">肃穆灰 (白事)</button>
+            </div>
+            <input type="hidden" id="edit-event-theme" value="${this.currentEvent.theme || ''}">
+          </div>
+
           <div>
             <label for="edit-min-speech-amount" class="block text-sm font-medium text-gray-700">语音播报起报金额 (元)</label>
             <input type="number" id="edit-min-speech-amount" min="0" step="1" class="w-full mt-1 p-2 border rounded themed-ring" value="${this.currentEvent.minSpeechAmount || 0}">
@@ -6526,6 +6574,7 @@
                   pdfEngine: pdfEngineSelection,
                 };
 
+                const newTheme = document.getElementById("edit-event-theme")?.value || this.currentEvent.theme;
                 const updatedEvent = {
                   ...this.currentEvent,
                   name: newName,
@@ -6533,6 +6582,7 @@
                   endDateTime: newEndDateTime,
                   voiceName: newVoiceName,
                   recorder: newRecorder,
+                  theme: newTheme,
                   minSpeechAmount: newMinSpeechAmount,
                   hidePrivacy: hidePrivacy,
                   printOptions: updatedPrintOptions,
@@ -6542,6 +6592,8 @@
                   await this.giftRepository.updateEvent(updatedEvent);
                   this.currentEvent = updatedEvent;
                   this.ui.elements.currentEventTitleEl.textContent = newName;
+                  // 更新主题类（可能已被修改）
+                  this.ui.applyTheme(this.currentEvent.theme);
 
                   // 重新应用样式以防万一
                   await this.applyCustomGiftBookStyle();
@@ -6571,6 +6623,30 @@
             const pdfEngineRadio = document.querySelector(`input[name="edit-pdf-engine"][value="${this.currentEvent.printOptions?.pdfEngine || "browser"}"]`);
             if (pdfEngineRadio) {
               pdfEngineRadio.checked = true;
+            }
+
+            // 初始化主题按钮状态
+            const currentTheme = this.currentEvent.theme || "";
+            const editFestBtn = document.getElementById("edit-theme-festive-btn");
+            const editSolBtn = document.getElementById("edit-theme-solemn-btn");
+            if (editFestBtn && editSolBtn) {
+              const updateEditSelection = (theme) => {
+                document.getElementById("edit-event-theme").value = theme;
+                [editFestBtn, editSolBtn].forEach((btn) => {
+                  btn.classList.remove("selected", "bg-red-500", "bg-black", "text-white");
+                  btn.classList.add("bg-gray-200", "text-gray-700");
+                });
+                if (theme === "theme-festive") {
+                  editFestBtn.classList.add("selected", "bg-red-500", "text-white");
+                } else if (theme === "theme-solemn") {
+                  editSolBtn.classList.add("selected", "bg-black", "text-white");
+                }
+              };
+              // 绑定事件
+              editFestBtn.addEventListener("click", () => updateEditSelection("theme-festive"));
+              editSolBtn.addEventListener("click", () => updateEditSelection("theme-solemn"));
+              // 应用初始状态
+              if (currentTheme) updateEditSelection(currentTheme);
             }
           }, 100);
         }
