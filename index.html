@@ -727,6 +727,7 @@
                 <div class="flex gap-2">
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="100">100</button>
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="200">200</button>
+                  <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="200">300</button>
                   <button type="button" class="amount-quick-btn themed-button-secondary px-3 py-1.5 rounded-lg" data-amount="500">500</button>
                 </div>
               </div>
@@ -740,18 +741,7 @@
                   <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="其他" class="themed-text-radio themed-ring" /><span>其他</span></label>
                 </div>
               </div>
-              <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（选填）" data-remark-type="custom"></textarea>
-              <div class="flex flex-wrap items-center gap-x-1 gap-y-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">更多备注：</label>
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="gift">礼品</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="relation">关系</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="phone">电话</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="address">住址</button>
-                </div>
-              </div>
-              <!-- 用于动态添加“礼品”、“关系”等输入框的容器 -->
-              <div id="remark-inputs-container" class="space-y-2"></div>
+              <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（例如小名住址）" data-remark-type="custom"></textarea>
               <button type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
             </form>
             <div class="mt-6 pt-6 border-t">
@@ -4064,10 +4054,6 @@
           this.allGiftsDecrypted = false;
           this.REMARK_LABELS = [
             { key: "custom", label: "备注" },
-            { key: "gift", label: "礼品" },
-            { key: "relation", label: "关系" },
-            { key: "phone", label: "电话" },
-            { key: "address", label: "住址" },
           ];
         }
 
