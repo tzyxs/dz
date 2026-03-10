@@ -658,7 +658,7 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label class="block text-sm font-medium text-red-500">嫁娶寿诞搬家选喜事，丧葬选白事</label>
+                  <label class="block text-sm font-medium text-red-500">嫁娶寿诞搬家选喜事，丧葬选白事。</label>
                   <div class="grid grid-cols-2 gap-4 mt-1">
                     <div class="p-3 border rounded-lg bg-gray-50 text-center">
                       <button type="button" id="theme-festive-btn" class="w-full p-2 bg-red-100 text-red-700 rounded transition theme-selection-btn">喜庆红 (喜事)</button>
@@ -671,16 +671,16 @@
                 </div>
 
 
-<!-- 隐藏元素， 代码是：style="display: none;"    -->
+<!-- 隐藏三哥 -->
 <div class="mt-4" style="display: none;">
-  <label for="event-voice" class="block text-sm font-medium text-gray-500">语音播报音色</label>
+  <label for="event-voice" class="block text-sm font-medium text-gray-500">audio</label>
   <div class="flex items-center gap-2 mt-1">
     <select id="event-voice" class="text-sm flex-grow w-full p-3 border rounded-lg focus:ring-2 themed-ring">
-      <option value="">默认音色</option>
+      <option value="">audio</option>
     </select>
-    <button type="button" id="preview-create-voice-btn" class="themed-button-secondary border p-3 rounded-lg whitespace-nowrap text-xl"><i class="ri-volume-up-line"></i> 预览</button>
+    <button type="button" id="preview-create-voice-btn" class="themed-button-secondary border p-3 rounded-lg whitespace-nowrap text-xl"><i class="ri-volume-up-line"></i> audio</button>
   </div>
-  <p class="text-xs text-gray-500 mt-2">选择一个喜欢的播报声音。</p>
+  <p class="text-xs text-gray-500 mt-2">audio</p>
 
                 </div>
                 <div class="mt-4">
@@ -695,7 +695,7 @@
         </div>
       </div>
 
-      <!-- 主界面 -->
+      <!-- 进入主题 -->
       <div id="main-screen" class="hidden">
         <div class="flex justify-between items-center mb-4">
           <div class="flex items-center gap-4">
@@ -735,8 +735,11 @@
                 </div>
               </div>
               <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（选填）" data-remark-type="custom"></textarea>
-              <div class="flex flex-wrap items-center gap-x-1 gap-y-2">
-                <label class="text-sm font-medium text-gray-700 whitespace-nowrap">更多备注：</label>
+ 
+
+<!-- 隐藏三哥  -->
+             <div class="flex flex-wrap items-center gap-x-1 gap-y-2"style="display: none;">               
+<label class="text-sm font-medium text-gray-700 whitespace-nowrap">更多备注：</label>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="gift">礼品</button>
                   <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="relation">关系</button>
@@ -744,7 +747,6 @@
                   <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="address">住址</button>
                 </div>
               </div>
-              <!-- 用于动态添加“礼品”、“关系”等输入框的容器 -->
               <div id="remark-inputs-container" class="space-y-2"></div>
               <button type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
             </form>
@@ -6392,7 +6394,7 @@
 
           speechSynthesis.cancel();
           const selectedVoiceName = selectElement.value;
-          const utterance = new SpeechSynthesisUtterance("张三贺礼五百元整");
+          const utterance = new SpeechSynthesisUtterance("喻三贺礼五百元整");
           utterance.lang = "zh-CN";
 
           if (selectedVoiceName) {
