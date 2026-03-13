@@ -252,6 +252,7 @@
       }
       input[type="number"] {
         -moz-appearance: textfield;
+        appearance: textfield;
       }
 
       .themed-header {
@@ -283,6 +284,9 @@
         background-color: rgba(187, 7, 7, 0.842); /* 与主题颜色一致 */
       }
       #theme-solemn-btn.selected {
+        background-color: #000;
+      }
+      #edit-theme-solemn-btn.selected {
         background-color: #000;
       }
       .themed-button-secondary:hover {
@@ -658,7 +662,7 @@
               </summary>
               <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
                 <div>
-                  <label class="block text-sm font-medium text-red-500">↓嫁娶寿诞搬家选喜事↓丧葬选白事↓</label>
+                  <label class="block text-sm font-medium text-red-500">↓嫁娶寿诞搬家选喜事↓丧葬选白事</label>
                   <div class="grid grid-cols-2 gap-4 mt-1">
                     <div class="p-3 border rounded-lg bg-gray-50 text-center">
                       <button type="button" id="theme-festive-btn" class="w-full p-2 bg-red-100 text-red-700 rounded transition theme-selection-btn">喜庆红<br>【喜事】</button>
@@ -852,7 +856,8 @@
         PRINT_SPLIT_THRESHOLD: 1008,
         APP_NAME: "电子礼簿系统 - 专业版",
         DB_NAME: "GiftRegistryDB",
-        DB_VERSION: 1,
+        DB_VERSION: 2,
+        BACKUP_UPLOAD_ENDPOINT: "/api/backups/upload",
         /**
          * 宾客等级系统配置
          * 使用数组存储等级名称，索引即为等级权重（用于排序）
@@ -1087,6 +1092,11 @@
                 giftStore.createIndex("eventId", "eventId", { unique: false });
                 giftStore.createIndex("byEventAndLevel", ["eventId", "guestLevelWeight", "levelUpdateTime", "id"], { unique: false });
               }
+
+              // 3. 创建应用配置表（用于保存目录句柄等配置）
+              if (!db.objectStoreNames.contains("appSettings")) {
+                db.createObjectStore("appSettings");
+              }
             };
           });
         }
@@ -1214,6 +1224,32 @@
           return new Promise((resolve, reject) => {
             const request = store.delete(key);
             request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          });
+        }
+
+        /**
+         * 保存应用级配置
+         */
+        async setSetting(key, value) {
+          const transaction = this.db.transaction("appSettings", "readwrite");
+          const store = transaction.objectStore("appSettings");
+          return new Promise((resolve, reject) => {
+            const request = store.put(value, key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          });
+        }
+
+        /**
+         * 读取应用级配置
+         */
+        async getSetting(key) {
+          const transaction = this.db.transaction("appSettings", "readonly");
+          const store = transaction.objectStore("appSettings");
+          return new Promise((resolve, reject) => {
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
           });
         }
@@ -2225,6 +2261,236 @@
       class ExportService {
         constructor(app) {
           this.app = app;
+          this.autoBackupDirKey = "autoBackupDirHandle";
+        }
+
+        /**
+         * 上传端点是否已配置
+         */
+        hasServerUploadEndpoint() {
+          return typeof CONFIG.BACKUP_UPLOAD_ENDPOINT === "string" && CONFIG.BACKUP_UPLOAD_ENDPOINT.trim() !== "";
+        }
+
+        /**
+         * 上传备份文件到服务器（网站根目录下的备份目录）
+         */
+        async uploadBlobToServer(blob, filename, format = "bin") {
+          if (!this.hasServerUploadEndpoint()) return null;
+
+          const formData = new FormData();
+          formData.append("backupFile", blob, filename);
+          formData.append("format", format);
+          formData.append("eventId", String(this.app.currentEvent?.id || ""));
+          formData.append("eventName", this.app.currentEvent?.name || "");
+
+          const response = await fetch(CONFIG.BACKUP_UPLOAD_ENDPOINT, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+          });
+
+          if (!response.ok) {
+            throw new Error(`upload_http_${response.status}`);
+          }
+
+          const result = await response.json().catch(() => ({}));
+          if (result?.success === false) {
+            throw new Error(result?.message || "upload_rejected");
+          }
+          return result;
+        }
+
+        /**
+         * 尝试保存到服务器，失败时返回 null 以便调用方回退
+         */
+        async trySaveToServer(blob, filename, format = "bin") {
+          try {
+            return await this.uploadBlobToServer(blob, filename, format);
+          } catch (error) {
+            console.warn("保存到服务器失败，已回退本地方案:", error);
+            return null;
+          }
+        }
+
+        /**
+         * 检查目录句柄是否具备读写权限
+         */
+        async ensureDirectoryWritePermission(directoryHandle, allowRequest = true) {
+          if (!directoryHandle) return false;
+          try {
+            let permission = await directoryHandle.queryPermission({ mode: "readwrite" });
+            if (permission === "granted") return true;
+            if (allowRequest) {
+              permission = await directoryHandle.requestPermission({ mode: "readwrite" });
+              return permission === "granted";
+            }
+          } catch (error) {
+            console.warn("目录权限检测失败:", error);
+          }
+          return false;
+        }
+
+        /**
+         * 解析可用的自动备份目录句柄
+         * allowPrompt=true 时会弹出目录选择器（用于首次配置）
+         */
+        async resolveAutoBackupDirectoryHandle({ allowPrompt = false } = {}) {
+          const app = this.app;
+
+          try {
+            const storedHandle = await app.dbManager.getSetting(this.autoBackupDirKey);
+            if (storedHandle) {
+              const hasPermission = await this.ensureDirectoryWritePermission(storedHandle, true);
+              if (hasPermission) return storedHandle;
+            }
+          } catch (error) {
+            console.warn("读取已保存目录失败:", error);
+          }
+
+          if (!allowPrompt || typeof window.showDirectoryPicker !== "function") {
+            return null;
+          }
+
+          try {
+            const pickedHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+            const hasPermission = await this.ensureDirectoryWritePermission(pickedHandle, true);
+            if (!hasPermission) return null;
+            await app.dbManager.setSetting(this.autoBackupDirKey, pickedHandle);
+            return pickedHandle;
+          } catch (error) {
+            if (error?.name !== "AbortError") {
+              console.error("选择自动备份目录失败:", error);
+            }
+            return null;
+          }
+        }
+
+        /**
+         * 在创建礼簿前预热自动备份目录（首次会弹出目录选择）
+         */
+        async prepareAutoBackupDirectoryForCreate() {
+          return this.resolveAutoBackupDirectoryHandle({ allowPrompt: true });
+        }
+
+        /**
+         * 构建加密备份文件（BIN）
+         */
+        async buildBinaryBackupPackage() {
+          const app = this.app;
+          if (!app.currentEvent) throw new Error("no_current_event");
+
+          const MAGIC_HEADER = [0x45, 0x47, 0x4c, 0x42]; // "EGLB"
+          const FILE_VERSION = 0x01;
+          const HEADER_LENGTH = 8;
+
+          const eventId = app.currentEvent.id;
+          const rawGifts = await app.giftRepository.fetchGiftsByEvent(eventId);
+
+          const sanitizedGifts = rawGifts.map((gift) => {
+            const decrypted = CryptoService.decrypt(gift.encryptedData, app.currentPassword);
+            if (!decrypted) {
+              throw new Error("decrypt_failed");
+            }
+            const encryptedData = CryptoService.encrypt(decrypted, app.currentPassword);
+            return {
+              encryptedData,
+              guestLevelWeight: gift.guestLevelWeight ?? 0,
+              levelUpdateTime: gift.levelUpdateTime ?? 0,
+            };
+          });
+
+          const safeEvent = { ...app.currentEvent };
+          delete safeEvent.passwordHash;
+
+          const payload = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            event: safeEvent,
+            gifts: sanitizedGifts,
+          };
+
+          const encryptedPayloadString = CryptoService.encrypt(JSON.stringify(payload), app.currentPassword);
+
+          const safeName = (app.currentEvent.name || "event").replace(/[\\/:*?"<>|]/g, "_");
+          const timestamp = Utils.formatTimestampForFilename();
+          const filename = `${safeName}_${timestamp}.bin`;
+
+          const header = new Uint8Array(HEADER_LENGTH);
+          header.set(MAGIC_HEADER, 0);
+          header[4] = FILE_VERSION;
+          header[5] = 0x00;
+          header[6] = 0x00;
+          header[7] = 0x00;
+
+          const binaryString = atob(encryptedPayloadString);
+          const payloadBytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            payloadBytes[i] = binaryString.charCodeAt(i);
+          }
+
+          const finalBuffer = new Uint8Array(header.length + payloadBytes.length);
+          finalBuffer.set(header, 0);
+          finalBuffer.set(payloadBytes, header.length);
+
+          const blob = new Blob([finalBuffer], { type: "application/octet-stream" });
+          return { blob, filename };
+        }
+
+        /**
+         * 触发浏览器下载文件
+         */
+        triggerBlobDownload(blob, filename) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+
+        /**
+         * 将备份写入指定目录
+         */
+        async writeBlobToDirectory(directoryHandle, blob, filename) {
+          const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        }
+
+        /**
+         * 新建礼簿后自动备份
+         * 优先写入已授权目录，失败时退化为浏览器下载
+         */
+        async autoSaveBackupAfterCreate(preferredDirectoryHandle = null) {
+          const app = this.app;
+          try {
+            const { blob, filename } = await this.buildBinaryBackupPackage();
+
+            const serverResult = await this.trySaveToServer(blob, filename, "bin");
+            if (serverResult) {
+              const savedPath = serverResult?.path || serverResult?.filename || filename;
+              app.ui.showNotification(`已自动保存到服务器：${savedPath}`, "success");
+              return true;
+            }
+
+            const directoryHandle = preferredDirectoryHandle || (await this.resolveAutoBackupDirectoryHandle({ allowPrompt: false }));
+            if (directoryHandle) {
+              await this.writeBlobToDirectory(directoryHandle, blob, filename);
+              app.ui.showNotification(`已自动保存备份：${filename}`, "success");
+              return true;
+            }
+
+            this.triggerBlobDownload(blob, filename);
+            app.ui.showNotification("已自动下载加密备份。若需保存到网站根目录，可配置服务器上传接口或首次授权目录访问。", "info");
+            return false;
+          } catch (error) {
+            console.error("新建礼簿自动备份失败:", error);
+            app.ui.showNotification("自动备份失败，请在“备份/恢复数据”中手动导出。", "error");
+            return false;
+          }
         }
 
         /**
@@ -2623,16 +2889,16 @@
             const filename = `${safeName}_${timestamp}.json`;
 
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            const serverResult = await this.trySaveToServer(blob, filename, "json");
 
-            app.ui.showNotification("JSON 备份已导出。", "success");
+            if (serverResult) {
+              const savedPath = serverResult?.path || serverResult?.filename || filename;
+              app.ui.showNotification(`JSON 备份已保存到服务器：${savedPath}`, "success");
+              return;
+            }
+
+            this.triggerBlobDownload(blob, filename);
+            app.ui.showNotification("JSON 备份已导出下载。", "success");
           } catch (error) {
             console.error("导出 JSON 备份失败:", error);
             app.ui.showNotification("导出 JSON 文件失败，请重试。", "error");
@@ -2652,79 +2918,18 @@
           if (!app.currentEvent) return;
 
           try {
-            // 定义文件格式常量
-            const MAGIC_HEADER = [0x45, 0x47, 0x4c, 0x42]; // "EGLB"
-            const FILE_VERSION = 0x01;
-            const HEADER_LENGTH = 8;
+            const { blob, filename } = await this.buildBinaryBackupPackage();
 
-            // 获取并处理礼金数据
-            const eventId = app.currentEvent.id;
-            const rawGifts = await app.giftRepository.fetchGiftsByEvent(eventId);
-
-            const sanitizedGifts = rawGifts.map((gift) => {
-              const decrypted = CryptoService.decrypt(gift.encryptedData, app.currentPassword);
-              if (!decrypted) {
-                throw new Error("decrypt_failed");
-              }
-              const encryptedData = CryptoService.encrypt(decrypted, app.currentPassword);
-              return {
-                encryptedData,
-                guestLevelWeight: gift.guestLevelWeight ?? 0,
-                levelUpdateTime: gift.levelUpdateTime ?? 0,
-              };
-            });
-
-            // 准备导出数据（移除密码哈希）
-            const safeEvent = { ...app.currentEvent };
-            delete safeEvent.passwordHash;
-
-            const payload = {
-              version: 1,
-              exportedAt: new Date().toISOString(),
-              event: safeEvent,
-              gifts: sanitizedGifts,
-            };
-
-            // 加密整个 payload
-            const encryptedPayloadString = CryptoService.encrypt(JSON.stringify(payload), app.currentPassword);
-
-            // 生成文件名
-            const safeName = (app.currentEvent.name || "event").replace(/[\\/:*?"<>|]/g, "_");
-            const timestamp = Utils.formatTimestampForFilename();
-            const filename = `${safeName}_${timestamp}.bin`;
-
-            // 构建文件头
-            const header = new Uint8Array(HEADER_LENGTH);
-            header.set(MAGIC_HEADER, 0); // 字节 0-3: Magic Number
-            header[4] = FILE_VERSION; // 字节 4: 版本号
-            header[5] = 0x00; // 字节 5-7: 保留
-            header[6] = 0x00;
-            header[7] = 0x00;
-
-            // 将 Base64 密文转换为原始字节流
-            const binaryString = atob(encryptedPayloadString);
-            const payloadBytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              payloadBytes[i] = binaryString.charCodeAt(i);
+            const serverResult = await this.trySaveToServer(blob, filename, "bin");
+            if (serverResult) {
+              const savedPath = serverResult?.path || serverResult?.filename || filename;
+              app.ui.showNotification(`加密备份已保存到服务器：${savedPath}`, "success");
+              return;
             }
 
-            // 组合文件头和数据体
-            const finalBuffer = new Uint8Array(header.length + payloadBytes.length);
-            finalBuffer.set(header, 0);
-            finalBuffer.set(payloadBytes, header.length);
+            this.triggerBlobDownload(blob, filename);
 
-            // 创建 Blob 并下载
-            const blob = new Blob([finalBuffer], { type: "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            app.ui.showNotification("加密备份已导出。", "success");
+            app.ui.showNotification("加密备份已导出下载。", "success");
           } catch (error) {
             console.error("导出加密备份失败:", error);
             app.ui.showNotification("导出加密备份失败，请重试。", "error");
@@ -2973,7 +3178,7 @@
           const modalContent = `
                         <div class="space-y-5 text-left">
                           <div>
-                            <p class="text-sm text-gray-600">可将当前礼簿数据备份为 JSON 或数据库（BIN）文件，亦可导入 BIN 文件进行恢复。</p>
+                            <p class="text-sm text-gray-600">可将当前礼簿数据备份为 JSON 或数据库（BIN）文件，亦可导入 BIN/JSON 文件进行恢复。若已部署上传接口，导出会优先保存到网站根目录备份区。</p>
                           </div>
                           <div class="grid sm:grid-cols-2 gap-3">
                             <button id="btn-backup-json" class="w-full themed-button-secondary border px-4 py-2 rounded">导出 JSON 数据</button>
@@ -4275,7 +4480,7 @@
           
           <div class="text-center mt-2 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-700 border border-yellow-200">
             <i class="ri-information-line align-middle mr-1"></i>
-            本程序来自网络，如果遗漏联系电话18108520999。
+            本程序来自网络，具体使用请联系电话18108520999。
           </div>
         `;
           this.ui.showModal("友情提示", html, [{ text: "关闭", class: "themed-button-secondary border px-6 py-2 rounded-lg" }]);
@@ -4601,6 +4806,13 @@
                   return;
                 }
 
+                let preferredBackupHandle = null;
+                try {
+                  preferredBackupHandle = await this.exportService.prepareAutoBackupDirectoryForCreate();
+                } catch (error) {
+                  console.warn("预备自动备份目录失败:", error);
+                }
+
                 const newEvent = {
                   name,
                   startDateTime,
@@ -4626,6 +4838,7 @@
                   this.ui.elements.createEventForm.reset();
                   this.ui.closeModal();
                   await this.startSession();
+                  await this.exportService.autoSaveBackupAfterCreate(preferredBackupHandle);
                   this.ui.showNotification("创建成功。", "success");
                 } catch (error) {
                   this.ui.showNotification("创建礼簿失败，请重试。", "error");
