@@ -637,24 +637,6 @@
 
 
 
-<!-- 隐藏三哥：代码是： style="display: none;"    -->
-           <div class="grid grid-cols-1 md:grid-cols-2 gap-4"style="display: none;">
-              <div>
-                <label class="block text-sm font-medium text-gray-700"></label>
-                <div class="flex gap-2">
-                  <input type="date" id="start-date" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
-                  <input type="time" id="start-time" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
-             </div>
-             </div>
-             <div>
-                 <label class="block text-sm font-medium text-gray-700"></label>  
-                 <div class="flex gap-2"> 
-                 <input type="date" id="end-date" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" /> 
-                 <input type="time" id="end-time" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" /> 
-
-            </div>
-             </div>
-             </div>
             <input type="text" id="admin-password" placeholder="设置管理密码 (请牢记)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
 
 
@@ -741,16 +723,6 @@
               <textarea id="guest-remark-custom" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" rows="2" placeholder="备注内容（选填）" data-remark-type="custom"></textarea>
  
 
-<!-- 隐藏三哥  -->
-             <div class="flex flex-wrap items-center gap-x-1 gap-y-2"style="display: none;">               
-<label class="text-sm font-medium text-gray-700 whitespace-nowrap">更多备注：</label>
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="gift">礼品</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="relation">关系</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="phone">电话</button>
-                  <button type="button" class="remark-preset-btn px-3 py-1.5 text-xs border rounded-lg themed-ring" data-preset="address">住址</button>
-                </div>
-              </div>
               <div id="remark-inputs-container" class="space-y-2"></div>
               <button type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
             </form>
@@ -857,13 +829,6 @@
         APP_NAME: "电子礼簿系统 - 专业版",
         DB_NAME: "GiftRegistryDB",
         DB_VERSION: 1,
-        /**
-         * 宾客等级系统配置
-         * 使用数组存储等级名称，索引即为等级权重（用于排序）
-         * 索引越大，等级越高，在打印/导出时排名越靠前
-         * 索引范围：0-4
-         */
-        GUEST_LEVELS: ["普宾", ...Array.from({ length: 100 }, (_, index) => `排序${100 - index}`)],
         PASSWORD_CACHE_DURATION: 5,
       };
 
@@ -950,22 +915,6 @@
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-        }
-
-        /**
-         * 获取当前日期时间的格式化字符串
-         * @returns {{date: string, time: string}} 包含 date 和 time 的对象
-         * @example
-         *   Utils.getCurrentDateTime()
-         *   // => { date: "2025-10-12", time: "14:30" }
-         * 用途：为创建礼簿表单设置默认时间
-         */
-        static getCurrentDateTime() {
-          const now = new Date();
-          const pad = (num) => num.toString().padStart(2, "0");
-          const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-          const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-          return { date, time };
         }
 
         /**
@@ -1089,66 +1038,11 @@
               if (!db.objectStoreNames.contains("gifts")) {
                 const giftStore = db.createObjectStore("gifts", { keyPath: "id", autoIncrement: true });
                 giftStore.createIndex("eventId", "eventId", { unique: false });
-                giftStore.createIndex("byEventAndLevel", ["eventId", "guestLevelWeight", "levelUpdateTime", "id"], { unique: false });
               }
             };
           });
         }
 
-        /**
-         * 根据复合索引进行排序查询
-         * @param {string} storeName 表名
-         * @param {string} indexName 索引名
-         * @param {*} key1 复合索引的第一个键 (eventId)
-         * @returns {Promise<Array>} 排序后的结果数组
-         *
-         * 排序逻辆（由 IndexedDB 索引自动完成）:
-         * 1. 按 guestLevelWeight 降序 (等级高的在前)
-         * 2. 相同等级内按 levelUpdateTime 降序 (修改过等级的在前，0 排在后)
-         * 3. levelUpdateTime 相同时按 id 升序 (录入顺序)
-         *
-         * 注意：为了实现降序，需要在内存中进行排序，因为 IndexedDB 索引只支持升序
-         */
-        async getAllByCompoundIndex(storeName, indexName, key1) {
-          const transaction = this.db.transaction(storeName, "readonly");
-          const store = transaction.objectStore(storeName);
-          const index = store.index(indexName);
-
-          return new Promise((resolve, reject) => {
-            const results = [];
-            // 使用游标遍历，只获取匹配 eventId 的记录
-            const range = IDBKeyRange.bound([key1, -Infinity, -Infinity, -Infinity], [key1, Infinity, Infinity, Infinity]);
-
-            const request = index.openCursor(range);
-
-            request.onsuccess = (event) => {
-              const cursor = event.target.result;
-              if (cursor) {
-                results.push(cursor.value);
-                cursor.continue();
-              } else {
-                // 排序：等级降序 -> levelUpdateTime 降序 -> id 升序
-                // 注意：这里必须排序，因为 IndexedDB 索引只能升序，我们需要降序
-                results.sort((a, b) => {
-                  const weightDiff = (b.guestLevelWeight || 0) - (a.guestLevelWeight || 0);
-                  if (weightDiff !== 0) return weightDiff;
-
-                  // levelUpdateTime 降序（0 排在最后）
-                  const aTime = a.levelUpdateTime || 0;
-                  const bTime = b.levelUpdateTime || 0;
-                  const timeDiff = bTime - aTime;
-                  if (timeDiff !== 0) return timeDiff;
-
-                  // id 升序（录入顺序）
-                  return (a.id || 0) - (b.id || 0);
-                });
-                resolve(results);
-              }
-            };
-
-            request.onerror = () => reject(request.error);
-          });
-        }
         /**
          */
         async add(storeName, data) {
@@ -1267,10 +1161,6 @@
             guestNameInput: $("guest-name"),
             giftAmountInput: $("gift-amount"),
             eventNameInput: $("event-name"),
-            startDateInput: $("start-date"),
-            startTimeInput: $("start-time"),
-            endDateInput: $("end-date"),
-            endTimeInput: $("end-time"),
             adminPasswordInput: $("admin-password"),
             eventThemeSelect: $("event-theme"),
             eventVoiceSelect: $("event-voice"),
@@ -1421,7 +1311,7 @@
         /**
          */
         async fetchOrderedGifts(eventId) {
-          return this.database.getAllByCompoundIndex("gifts", "byEventAndLevel", eventId);
+          return this.database.getAllByIndex("gifts", "eventId", eventId);
         }
 
         /**
@@ -1482,24 +1372,6 @@
          */
         clear() {
           sessionStorage.removeItem(this.storageKey);
-        }
-
-        /**
-         */
-        _notificationKey(eventId) {
-          return `eventEndedNotif_${eventId}`;
-        }
-
-        /**
-         */
-        hasNotification(eventId) {
-          return !!sessionStorage.getItem(this._notificationKey(eventId));
-        }
-
-        /**
-         */
-        markNotification(eventId) {
-          sessionStorage.setItem(this._notificationKey(eventId), "true");
         }
       }
 
@@ -1603,8 +1475,6 @@
           return {
             id: giftObject.id,
             eventId: giftObject.eventId,
-            guestLevelWeight: giftObject.guestLevelWeight ?? 0,
-            levelUpdateTime: giftObject.levelUpdateTime ?? 0,
             encryptedData: giftObject.encryptedData,
             ...overrides,
           };
@@ -1832,24 +1702,14 @@
           app.allGiftsDecrypted = false;
           const encryptedGifts = await app.giftRepository.fetchOrderedGifts(app.currentEvent.id);
 
-          // 容错处理：确保所有记录都有 guestLevelWeight 和 levelUpdateTime
           app.gifts = encryptedGifts.map((g) => {
-            if (g.guestLevelWeight === undefined || g.guestLevelWeight === null) {
-              g.guestLevelWeight = 0; // 默认等级
-            }
-            if (g.levelUpdateTime === undefined || g.levelUpdateTime === null) {
-              g.levelUpdateTime = 0; // 默认为 0（未修改过等级）
-            }
             return { ...g, data: null, _needsDecrypt: true };
           });
           const pageSize = app.getItemsPerPage();
           const totalPages = Math.ceil(app.gifts.length / pageSize) || 1;
 
-          // 智能选择初始页码：已结束显示第一页，进行中显示最后一页
-          const now = new Date();
-          const endTime = new Date(app.currentEvent.endDateTime);
-          const isEventEnded = now > endTime;
-          app.currentPage = isEventEnded ? 1 : totalPages;
+          // 已删除礼簿起止时间，直接显示最后一页（最新录入）
+          app.currentPage = totalPages;
           if (!this.allGiftsDecrypted) {
             // 解密当前页数据
             const pageStart = (app.currentPage - 1) * pageSize;
@@ -2002,27 +1862,13 @@
         }
 
         /**
-         * 按等级+等级修改时间排序礼金数组（通用方法）
-         * 排序逻辑：
-         * 1. 等级降序（高等级在前）
-         * 2. 相同等级内按 levelUpdateTime 降序（修改过等级的在前）
-         * 3. levelUpdateTime 相同时按 id 升序（录入顺序）
+         * 按录入顺序排序礼金数组（通用方法）
+         * 排序逻辑：按 id 升序（最早录入排最前）
          */
         sortGiftsByLevel() {
           const app = this.app;
-          app.gifts.sort((a, b) => {
-            const weightDiff = (b.guestLevelWeight || 0) - (a.guestLevelWeight || 0);
-            if (weightDiff !== 0) return weightDiff;
-
-            // levelUpdateTime 降序（0 排在最后）
-            const aTime = a.levelUpdateTime || 0;
-            const bTime = b.levelUpdateTime || 0;
-            const timeDiff = bTime - aTime;
-            if (timeDiff !== 0) return timeDiff;
-
-            // id 升序（录入顺序）
-            return (a.id || 0) - (b.id || 0);
-          });
+          // 已删除宾客等级，按录入顺序（id 升序）排列，最早录入排最前
+          app.gifts.sort((a, b) => (a.id || 0) - (b.id || 0));
         }
 
         /**
@@ -2075,12 +1921,7 @@
             const forceVerify = changedFieldKeys.includes("name") || changedFieldKeys.includes("amount");
             password = await app.requestAdminPassword("修改确认", "如要调整礼金信息，请输入管理员密码。", null, forceVerify);
           } else if (updateType === "remark") {
-            const isOutOfTime = new Date() < new Date(app.currentEvent.startDateTime) || new Date() > new Date(app.currentEvent.endDateTime);
-            if (isOutOfTime) {
-              password = await app.requestAdminPassword("备注记录", "当前已超过有效录入时间，请输入管理员密码后继续修改备注。");
-            } else {
-              password = app.currentPassword; // 在有效时段内，直接使用当前密码
-            }
+            password = app.currentPassword;
           }
 
           if (password === null) {
@@ -2424,7 +2265,7 @@
             };
 
             // ====================== 3. 构造最终 PDF 参数（层级清晰、合并集中） ======================
-            const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.startDateTime);
+            const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.createdAt || app.currentEvent.startDateTime);
             const totalParts = app.gifts.length > CONFIG.PRINT_SPLIT_THRESHOLD ? Math.ceil(app.gifts.length / CONFIG.PRINT_SPLIT_THRESHOLD) : null;
 
             const baseOptions = {
@@ -2515,7 +2356,7 @@
               ...DEFAULT_PRINT_OPTIONS,
               ...(app.currentEvent.printOptions || {}),
             };
-            const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.startDateTime);
+            const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.createdAt || app.currentEvent.startDateTime);
 
             document.title = `${app.currentEvent.name}礼金记录{partIndex ? "-P" + partIndex : ""}-${eventDateInfo.localeDate}`;
 
@@ -2606,8 +2447,6 @@
               return {
                 id: gift.id,
                 eventId,
-                guestLevelWeight: gift.guestLevelWeight ?? 0,
-                levelUpdateTime: gift.levelUpdateTime ?? 0,
                 ...decrypted,
               };
             });
@@ -2673,8 +2512,6 @@
               const encryptedData = CryptoService.encrypt(decrypted, app.currentPassword);
               return {
                 encryptedData,
-                guestLevelWeight: gift.guestLevelWeight ?? 0,
-                levelUpdateTime: gift.levelUpdateTime ?? 0,
               };
             });
 
@@ -2863,8 +2700,6 @@
               await app.giftRepository.createGift({
                 eventId: app.currentEvent.id,
                 encryptedData,
-                guestLevelWeight: record.guestLevelWeight ?? 0,
-                levelUpdateTime: record.levelUpdateTime ?? 0,
               });
             }
 
@@ -2934,8 +2769,6 @@
               await app.giftRepository.createGift({
                 eventId: app.currentEvent.id,
                 encryptedData,
-                guestLevelWeight: record.guestLevelWeight ?? 0,
-                levelUpdateTime: record.levelUpdateTime ?? 0,
               });
             }
 
@@ -3431,7 +3264,7 @@
             }
           });
 
-          const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.startDateTime);
+          const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.createdAt || app.currentEvent.startDateTime);
 
           const partTotalCount = gifts.length;
           const partTotalAmount = gifts.reduce((sum, gift) => sum + gift.data.amount, 0);
@@ -3512,7 +3345,6 @@
           };
 
           const dataToExport = [];
-          const giftSheetData = [];
 
           let totalAmount = 0;
           let activeCount = 0;
@@ -3522,37 +3354,15 @@
           for (let i = 0; i < app.gifts.length; i++) {
             const g = app.gifts[i];
             const isAbolished = g.data.abolished === true;
-            const guestLevel = g.data.guestLevel !== undefined ? g.data.guestLevel : 0;
-            const guestLevelName = CONFIG.GUEST_LEVELS[guestLevel] || CONFIG.GUEST_LEVELS[0];
-
             // 备注处理 - 分别提取各个字段
             const remarkData = app.normalizeRemarkData(g.data.remarkData);
             const customRemark = remarkData.custom || "";
-            const giftRemark = remarkData.gift || "";
-            const relationRemark = remarkData.relation || "";
-            const phoneRemark = remarkData.phone || "";
-            const addressRemark = remarkData.address || "";
-
-            // 如果记录有效（未作废）且礼品备注不为空，则添加到礼品清单
-            if (!isAbolished && giftRemark) {
-              giftSheetData.push({
-                姓名: g.data.name,
-                礼品名称: giftRemark,
-                关系: relationRemark,
-                登记时间: new Date(g.data.timestamp).toLocaleString("zh-CN"),
-              });
-            }
 
             dataToExport.push({
               姓名: g.data.name,
               金额: g.data.amount,
               收款类型: g.data.type,
-              宾客等级: guestLevelName,
               备注: customRemark,
-              礼品: giftRemark,
-              关系: relationRemark,
-              电话: phoneRemark,
-              住址: addressRemark,
               状态: isAbolished ? "已作废" : "正常",
               作废理由: isAbolished ? g.data.abolishReason || "" : "",
               登记时间: new Date(g.data.timestamp).toLocaleString("zh-CN"),
@@ -3581,12 +3391,7 @@
             { wch: 10 }, // 姓名
             { wch: 12 }, // 金额
             { wch: 12 }, // 收款类型
-            { wch: 10 }, // 宾客等级
             { wch: 30 }, // 备注(自定义)
-            { wch: 20 }, // 礼品 (加宽一些)
-            { wch: 15 }, // 关系
-            { wch: 18 }, // 电话
-            { wch: 25 }, // 住址
             { wch: 10 }, // 状态
             { wch: 30 }, // 作废理由
             { wch: 22 }, // 登记时间
@@ -3597,24 +3402,7 @@
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, "礼金明细");
 
-          if (giftSheetData.length > 0) {
-            // 创建礼品清单的 worksheet
-            const giftWorksheet = XLSX.utils.json_to_sheet(giftSheetData, {
-              header: ["姓名", "礼品名称", "关系", "登记时间"], // 确保表头顺序
-            });
-
-            // 为礼品清单设置列宽
-            giftWorksheet["!cols"] = [
-              { wch: 10 }, // 姓名
-              { wch: 30 }, // 礼品名称
-              { wch: 18 }, // 关系
-              { wch: 22 }, // 登记时间
-            ];
-
-            // 将新的 worksheet 附加到工作簿中，
-            XLSX.utils.book_append_sheet(workbook, giftWorksheet, "礼品清单");
-          }
-          const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.startDateTime);
+          const eventDateInfo = Utils.getEventDateInfo(app.currentEvent.createdAt || app.currentEvent.startDateTime);
           XLSX.writeFile(workbook, `${app.currentEvent.name}-礼金明细(${eventDateInfo.localeDate}).xlsx`);
           app.ui.showNotification("导出成功！", "success");
         }
@@ -3676,7 +3464,6 @@
                               <option value="max-amount">礼金最多</option>
                               <option value="min-amount">礼金最少</option>
                               <option value="has-remarks">有备注</option>
-                              <option value="has-gifts">有礼品</option>
                               <option value="abolished">已作废</option>
                               <optgroup label="按收款方式筛选">
                                 <option value="cash">筛选「现金」</option>
@@ -3734,8 +3521,6 @@
             let currentGrid = null;
             const renderGrid = (giftsToShow) => {
               const tableData = giftsToShow.map((g) => {
-                const guestLevel = g.data.guestLevel !== undefined ? g.data.guestLevel : 0;
-                const guestLevelName = CONFIG.GUEST_LEVELS[guestLevel] || CONFIG.GUEST_LEVELS[0];
                 const remarkTextForTable = app.formatRemarkDisplay(g.data.remarkData || {}, " / ") || "无";
                 return [
                   g.data.name,
@@ -4065,10 +3850,6 @@
           this.allGiftsDecrypted = false;
           this.REMARK_LABELS = [
             { key: "custom", label: "备注" },
-            { key: "gift", label: "礼品" },
-            { key: "relation", label: "关系" },
-            { key: "phone", label: "电话" },
-            { key: "address", label: "住址" },
           ];
         }
 
@@ -4089,14 +3870,9 @@
         }
 
         /**
-         * 设置初始 UI 状态，例如默认时间与语音列表
+         * 设置初始 UI 状态，例如语音列表
          */
         setupInitialUI() {
-          const { date, time } = Utils.getCurrentDateTime();
-          this.ui.elements.startDateInput.value = date;
-          this.ui.elements.startTimeInput.value = "00:00"; //time;
-          this.ui.elements.endDateInput.value = date;
-          this.ui.elements.endTimeInput.value = "23:59";
           this.populateVoiceList();
           // 重置主题选择按钮状态
           this.resetThemeSelection();
@@ -4213,21 +3989,6 @@
             this.session.save(this.currentEvent, this.currentPassword);
           } catch (error) {
             console.error("会话存储失败", error);
-          }
-
-          // 检查礼簿是否结束，提醒用户导出数据
-          const endTime = new Date(this.currentEvent.endDateTime);
-          const now = new Date();
-
-          if (now > endTime && !this.session.hasNotification(this.currentEvent.id)) {
-            const title = "请及时导出数据";
-            const message = `当前礼簿已结束，为确保数据安全，强烈建议您尽快通过【<strong>导出为 Excel</strong>】或【<strong>打印/另存为PDF</strong>】功能，将礼金数据完整备份至您的电脑或者微信。<br>
-                             <span class="text-sm text-gray-600">原因：时间长了，存储空间可能会因浏览器清理、缓存清除等操作被重置，导致数据意外丢失。</span>`;
-
-            setTimeout(() => {
-              this.ui.showModal(title, message, [{ text: "我已知晓", class: "themed-button-primary px-4 py-2 rounded", role: "secondary" }]);
-              this.session.markNotification(this.currentEvent.id);
-            }, 500);
           }
 
           await this.giftManager.loadGiftsForCurrentEvent();
@@ -4558,26 +4319,19 @@
         async handleCreateEvent(e) {
           e.preventDefault();
           const name = this.ui.elements.eventNameInput.value.trim();
-          const startDateTime = `${this.ui.elements.startDateInput.value}T${this.ui.elements.startTimeInput.value}`;
-          const endDateTime = `${this.ui.elements.endDateInput.value}T${this.ui.elements.endTimeInput.value}`;
           const password = this.ui.elements.adminPasswordInput.value;
           const theme = this.ui.elements.eventThemeSelect.value;
           const voiceName = this.ui.elements.eventVoiceSelect.value;
           const recorder = document.getElementById("event-recorder").value.trim();
           const pdfEngine = "browser";
 
-          if (!name || !password || !startDateTime || !endDateTime) {
+          if (!name || !password) {
             this.ui.showNotification("请填写所有必填项。", "error");
             return;
           }
 
           if (!theme) {
             this.ui.showNotification("请选择礼簿主题颜色（喜庆红或肃穆灰）。", "error");
-            return;
-          }
-
-          if (new Date(startDateTime) >= new Date(endDateTime)) {
-            this.ui.showNotification("开始时间必须早于结束时间。", "error");
             return;
           }
 
@@ -4607,8 +4361,7 @@
 
                 const newEvent = {
                   name,
-                  startDateTime,
-                  endDateTime,
+                  createdAt: new Date().toISOString(),
                   passwordHash: CryptoService.hash(password),
                   theme,
                   voiceName,
@@ -4757,34 +4510,17 @@
          * @param {Object} giftData - 礼金数据
          */
         async saveGift(giftData) {
-          const isOutOfTime = new Date() < new Date(this.currentEvent.startDateTime) || new Date() > new Date(this.currentEvent.endDateTime);
-
-          if (isOutOfTime) {
-            const password = await this.requestAdminPassword("礼金补录", "当前已超出有效录入时间,请输入管理密码进行补录。", null, false);
-            if (password === null) {
-              this.ui.closeModal();
-              return;
-            }
-          }
-
           try {
-            // 默认等级为 0（雅宾）
-            const guestLevel = giftData.guestLevel !== undefined ? giftData.guestLevel : 0;
-
             // timestamp 放入 encryptedData，用于显示创建/修改时间
             const fullGiftData = {
               ...giftData,
               timestamp: new Date().toISOString(),
-              guestLevel,
             };
             const encryptedData = CryptoService.encrypt(fullGiftData, this.currentPassword);
 
-            // levelUpdateTime 默认为 0（未修改过等级）
             const newGiftId = await this.giftRepository.createGift({
               eventId: this.currentEvent.id,
               encryptedData,
-              guestLevelWeight: guestLevel,
-              levelUpdateTime: 0, // 新增时为 0，表示未修改过等级
             });
 
             // 优化：直接插入新记录到内存，避免重新查询
@@ -4792,8 +4528,6 @@
               id: newGiftId,
               eventId: this.currentEvent.id,
               encryptedData,
-              guestLevelWeight: guestLevel,
-              levelUpdateTime: 0,
               data: fullGiftData,
               _needsDecrypt: false,
             };
@@ -4911,13 +4645,6 @@
           const remainingAmountCorrections = Math.max(0, 1 - amountCorrectionCount);
           const canModifyAmount = !isAbolished && remainingAmountCorrections > 0;
 
-          // 生成嘉宾等级选项（使得嘉宾等级高的排在前面）
-          const guestLevel = g.guestLevel !== undefined ? g.guestLevel : 0;
-          const levelOptions = CONFIG.GUEST_LEVELS.map((levelName, index) => ({ levelName, index }))
-            .reverse() // 反转数组，得等级高的排前面
-            .map(({ levelName, index }) => `<option value="${index}" ${index === guestLevel ? "selected" : ""}>${levelName}</option>`)
-            .join("");
-
           // 根据剩余纠错/修改次数控制按钮是否可用及提示文案
           const correctNameButtonHtml = !isAbolished
             ? `<button id="btn-correct-name" data-remaining-corrections="${remainingNameCorrections}" class="text-sm text-blue-600 hover:underline px-2 py-1 ${canCorrectName ? "" : "opacity-50 cursor-not-allowed"}" ${
@@ -4949,17 +4676,6 @@
                         <div id="name-display-area" class="flex justify-between items-center p-2 hover:bg-gray-50 rounded ${isAbolished ? "opacity-60" : ""}">
                           <div class="flex items-center gap-3 flex-wrap">
                             <div><strong>姓名:</strong> <span class="text-lg ml-2">${g.name}</span></div>
-                            ${
-                              !isAbolished
-                                ? `
-                              <div class="flex items-center gap-2">
-                                <select id="guest-level-select" class="text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white themed-ring cursor-pointer">
-                                  ${levelOptions}
-                                </select>
-                              </div>
-                            `
-                                : ""
-                            }
                           </div>
                           ${correctNameButtonHtml}
                         </div>
@@ -5031,35 +4747,9 @@
             const btnCorrectName = document.getElementById("btn-correct-name");
             const btnModifyAmount = document.getElementById("btn-modify-amount");
             const btnEditRemarks = document.getElementById("btn-edit-remarks");
-            const levelSelect = document.getElementById("guest-level-select");
-
             if (btnCorrectName && !btnCorrectName.disabled) btnCorrectName.onclick = () => this.enableInlineEdit(giftIndex, "name");
             if (btnModifyAmount && !btnModifyAmount.disabled) btnModifyAmount.onclick = () => this.enableInlineEdit(giftIndex, "amount");
             if (btnEditRemarks) btnEditRemarks.onclick = () => this.enableInlineEdit(giftIndex, "remarks");
-
-            // 绑定宾客等级选择器变化事件
-            if (levelSelect) {
-              levelSelect.addEventListener("change", async (e) => {
-                const newLevel = parseInt(e.target.value, 10);
-                const oldLevel = g.guestLevel !== undefined ? g.guestLevel : 0;
-                if (newLevel !== oldLevel) {
-                  const oldLevelName = CONFIG.GUEST_LEVELS[oldLevel];
-                  const newLevelName = CONFIG.GUEST_LEVELS[newLevel];
-
-                  // 需要验证密码，但支持N分钟免密
-                  const password = await this.requestAdminPassword("修改宾客等级", `即将把 "${g.name}" 从 "${oldLevelName}" 修改为 "${newLevelName}"`, null);
-
-                  if (password === null) {
-                    // 用户取消，恢复原来的值
-                    e.target.value = oldLevel;
-                    return;
-                  }
-
-                  // 更新宾客等级
-                  await this.updateGuestLevel(giftIndex, newLevel, oldLevel);
-                }
-              });
-            }
 
             if (hasHistory) {
               this.bindViewOriginalEvents(g.history, giftIndex);
@@ -5636,16 +5326,12 @@
         bindViewOriginalEvents(history, giftIndex) {
           const showSnapshot = (historyIndex) => {
             const snapshot = history[historyIndex].snapshot;
-            const snapshotLevel = snapshot.guestLevel !== undefined ? snapshot.guestLevel : 0;
-            const snapshotLevelName = CONFIG.GUEST_LEVELS[snapshotLevel] || CONFIG.GUEST_LEVELS[0];
-
             const remarkDisplay = this.formatRemarkDisplay(snapshot.remarkData || "");
 
             const content = `
                         <div class="space-y-2 p-4 bg-gray-100 rounded text-left">
                           <p><strong>姓名:</strong> ${snapshot.name}</p>
                           <p><strong>金额:</strong> ${Utils.formatCurrency(snapshot.amount)} (${snapshot.type})</p>
-                          <p><strong>宾客等级:</strong> ${snapshotLevelName}</p>
                           <p><strong>备注:</strong> ${remarkDisplay || "无"}</p>
                           <p class="text-xs text-gray-500 border-t pt-2 mt-2">此记录于 ${new Date(history[historyIndex].timestamp).toLocaleString()} 被修改存档。</p>
                         </div>
@@ -5982,67 +5668,6 @@
           }
         }
 
-        /**
-         * 更新宾客等级
-         * @param {number} giftIndex - 礼金索引
-         * @param {number} newLevel - 新等级索引 (0-4)
-         * @param {number} oldLevel - 旧等级索引 (0-4)
-         */
-        async updateGuestLevel(giftIndex, newLevel, oldLevel) {
-          try {
-            const giftObject = this.gifts[giftIndex];
-            const currentData = { ...giftObject.data };
-            const now = new Date().toISOString();
-            const newlevelUpdateTime = Date.now();
-
-            const oldLevelName = CONFIG.GUEST_LEVELS[oldLevel];
-            const newLevelName = CONFIG.GUEST_LEVELS[newLevel];
-
-            // 等级变化，记录历史，更新 levelUpdateTime
-            const historyEntry = {
-              timestamp: now,
-              changeLog: `将宾客等级从 "${oldLevelName}" 修改为 "${newLevelName}"`,
-              snapshot: this.giftManager.createSnapshot(currentData),
-              type: "levelChange",
-            };
-
-            const updatedData = {
-              ...currentData,
-              guestLevel: newLevel,
-              timestamp: now,
-              history: currentData.history ? [...currentData.history, historyEntry] : [historyEntry],
-            };
-
-            // timestamp 在 encryptedData 中，levelUpdateTime 单独存储
-            const encryptedData = CryptoService.encrypt(updatedData, this.currentPassword);
-            await this.giftRepository.updateGift(
-              this.giftManager.buildGiftRecordForUpdate(giftObject, {
-                encryptedData,
-                guestLevelWeight: newLevel,
-                levelUpdateTime: newlevelUpdateTime,
-              })
-            );
-
-            // 优化：只重新排序内存数据，避免重复查询和解密
-            const updatedGiftId = giftObject.id;
-            this.gifts[giftIndex].data = updatedData;
-            this.gifts[giftIndex].encryptedData = encryptedData;
-            this.gifts[giftIndex].guestLevelWeight = newLevel;
-            this.gifts[giftIndex].levelUpdateTime = newlevelUpdateTime;
-            this.giftManager.sortGiftsByLevel();
-
-            const newIndex = this.gifts.findIndex((g) => g.id === updatedGiftId);
-            this.currentPage = newIndex !== -1 ? Math.floor(newIndex / app.getItemsPerPage()) + 1 : this.currentPage;
-            this.giftManager.render();
-
-            this.ui.closeModal();
-            setTimeout(() => this.showGiftDetails(newIndex, { fromStats: false }), 150);
-            this.ui.showNotification(`宾客等级已更新为 "${newLevelName}"。`, "success");
-          } catch (error) {
-            console.error("等级更新失败，请重试。:", error);
-            this.ui.showNotification("等级更新失败，请重试。", "error");
-          }
-        }
 
         /**
          * 统一的管理员密码校验方法
@@ -6449,9 +6074,6 @@
         async showEditEventInfoModal() {
           this.ui.elements.modal.classList.add("modal-large");
 
-          const [startDate, startTime] = (this.currentEvent.startDateTime || "").split("T");
-          const [endDate, endTime] = (this.currentEvent.endDateTime || "").split("T");
-
           const content = `
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-left">
         <div class="space-y-4">
@@ -6499,22 +6121,6 @@
         </div>
 
         <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">礼簿开始时间</label>
-            <div class="flex gap-2 mt-1">
-              <input type="date" id="edit-start-date" required class="w-full p-2 border rounded themed-ring" value="${startDate || ""}">
-              <input type="time" id="edit-start-time" required class="w-full p-2 border rounded themed-ring" value="${startTime || ""}">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700">礼簿结束时间</label>
-            <div class="flex gap-2 mt-1">
-              <input type="date" id="edit-end-date" required class="w-full p-2 border rounded themed-ring" value="${endDate || ""}">
-              <input type="time" id="edit-end-time" required class="w-full p-2 border rounded themed-ring" value="${endTime || ""}">
-            </div>
-          </div>
-
           <!-- 仅保留 PDF 引擎选择，因为这属于技术配置而非样式 -->
           <div class="mt-4 pt-4">
               <span class="block text-sm font-medium text-gray-700">PDF渲染方式</span>
@@ -6549,8 +6155,6 @@
                 const newName = document.getElementById("edit-event-name-input").value.trim();
                 const newVoiceName = document.getElementById("edit-event-voice").value;
                 const newMinSpeechAmount = parseFloat(document.getElementById("edit-min-speech-amount").value) || 0;
-                const newStartDateTime = `${document.getElementById("edit-start-date").value}T${document.getElementById("edit-start-time").value}`;
-                const newEndDateTime = `${document.getElementById("edit-end-date").value}T${document.getElementById("edit-end-time").value}`;
                 const newRecorder = document.getElementById("edit-event-recorder").value.trim();
                 const hidePrivacy = document.getElementById("edit-hide-privacy").checked;
                 const pdfEngineSelection = document.querySelector('input[name="edit-pdf-engine"]:checked')?.value || "browser";
@@ -6559,23 +6163,6 @@
                 if (!newName) {
                   this.ui.showNotification("礼簿名称不能为空。", "error");
                   return;
-                }
-                if (new Date(newStartDateTime) >= new Date(newEndDateTime)) {
-                  this.ui.showNotification("开始时间必须早于结束时间。", "error");
-                  return;
-                }
-
-                // 日期变动验证密码
-                const originalStartDateTime = this.currentEvent.startDateTime;
-                const originalEndDateTime = this.currentEvent.endDateTime;
-                const datesChanged = newStartDateTime !== originalStartDateTime || newEndDateTime !== originalEndDateTime;
-
-                if (datesChanged) {
-                  const password = await this.requestAdminPassword("密码验证", "修改礼簿的起止日期，请输入管理密码以确认。", null, true);
-                  if (!password) {
-                    this.ui.showNotification("已取消验证，修改未保存。", "info");
-                    return;
-                  }
                 }
 
                 const currentPrintOptions = this.currentEvent.printOptions || {};
@@ -6588,8 +6175,6 @@
                 const updatedEvent = {
                   ...this.currentEvent,
                   name: newName,
-                  startDateTime: newStartDateTime,
-                  endDateTime: newEndDateTime,
                   voiceName: newVoiceName,
                   recorder: newRecorder,
                   theme: newTheme,
